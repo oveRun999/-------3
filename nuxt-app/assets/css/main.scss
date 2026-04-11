@@ -1,0 +1,356 @@
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   競艇予想アプリ グローバルスタイル
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  --color-primary: #0a3d7c;
+  --color-accent: #1e6fe8;
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-border: #d0dcea;
+  --color-text: #1a2533;
+  --color-muted: #6b7a99;
+
+  --color-success: #2e7d32;
+  --color-error: #c0392b;
+  --color-warning: #e67e22;
+  --color-warning-dark: #856404;
+  --color-info: #2980b9;
+  --color-purple: #8e44ad;
+  --color-gold: #c6933a;
+  --color-bronze: #a0522d;
+  --color-grey: #888;
+  --color-grey-dark: #555;
+  --color-black: #000;
+  --color-white: #ffffff;
+
+  --color-surface-warning: #fff3cd;
+  --color-surface-error: #fde8e8;
+  --color-surface-warning-soft: #fde9d6;
+  --color-surface-info: #e8f4fd;
+  --color-surface-ana: #f3e5f5;
+  --color-surface-success: #e8f5e9;
+  --color-surface-secondary: #eef3fb;
+  --color-surface-muted: #f0f0f0;
+  --color-surface-light: #f8f8f8;
+  --color-surface-alt: #f0f5ff;
+  --color-rank-bg-1: #fffbeb;
+  --color-rank-bg-2: #f8f9fa;
+  --color-rank-bg-3: #fff4ee;
+
+  --color-border-soft: #ccc;
+  --color-white-opaque-weak: rgba(255, 255, 255, 0.15);
+  --color-white-opaque: rgba(255, 255, 255, 0.2);
+  --color-white-opaque-strong: rgba(255, 255, 255, 0.3);
+  --color-white-opaque-hover: rgba(255, 255, 255, 0.25);
+  --color-black-opaque: rgba(0, 0, 0, 0.25);
+  --color-black-opaque-soft: rgba(0, 0, 0, 0.2);
+  --color-shadow-deep: rgba(10, 61, 124, 0.25);
+  --color-error-opaque: rgba(192, 57, 43, 0.5);
+  --color-warning-opaque: rgba(198, 147, 58, 0.35);
+  --color-success-opaque: rgba(46, 125, 50, 0.5);
+  --color-info-light: #9ec3ff;
+  --color-secondary-soft: #e8f0ff;
+  --color-danger-soft: #ff6b6b;
+  --color-error-soft: #e57373;
+  --color-success-bright: #4caf50;
+
+  /* 艇番カラー */
+  --boat-1: #ffffff;
+  --boat-2: #222222;
+  --boat-3: #e63535;
+  --boat-4: #1565c0;
+  --boat-5: #f9a825;
+  --boat-6: #2e7d32;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+/* ナビゲーション */
+.nav {
+  background: var(--color-primary);
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  height: 52px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-right: 24px;
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+}
+.nav-link {
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  padding: 0 14px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.nav-link:hover,
+.nav-link.active {
+  background: var(--color-white-opaque-weak);
+  color: var(--color-white);
+}
+
+/* メインコンテンツ */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 16px;
+  border-left: 4px solid var(--color-accent);
+  padding-left: 10px;
+}
+
+/* フィルターバー */
+.filter-bar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.filter-bar label {
+  font-size: 12px;
+  color: var(--color-muted);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.filter-bar .chip {
+  font-size: 12px;
+  padding: 4px 5px 5px 6px;
+  margin-right: 10px;
+}
+
+/* 日付入力 + 曜日バッジ */
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.day-badge {
+  display: inline-block;
+  min-width: 22px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.day-badge.saturday {
+  background: var(--color-secondary-soft);
+  color: var(--color-info);
+  border-color: var(--color-info-light);
+}
+.day-badge.sunday {
+  background: var(--color-surface-error);
+  color: var(--color-error);
+  border-color: var(--color-error-soft);
+}
+
+.filter-bar select,
+.filter-bar input[type="date"],
+.filter-bar input[type="text"] {
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.filter-bar select:focus,
+.filter-bar input:focus {
+  border-color: var(--color-accent);
+}
+
+/* カード */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.card-header {
+  background: var(--color-primary);
+  color: var(--color-white);
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.race-badge {
+  background: var(--color-accent);
+  color: var(--color-white);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* テーブル */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.data-table th {
+  background: var(--color-surface-secondary);
+  color: var(--color-muted);
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+.data-table tr:hover td {
+  background: var(--color-surface-alt);
+}
+
+/* 艇番バッジ */
+.boat-badge {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  line-height: 22px;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+}
+.boat-1 {
+  background: var(--boat-1);
+  color: var(--color-text);
+}
+.boat-2 {
+  background: var(--boat-2);
+  color: var(--color-white);
+}
+.boat-3 {
+  background: var(--boat-3);
+  color: var(--color-white);
+}
+.boat-4 {
+  background: var(--boat-4);
+  color: var(--color-white);
+}
+.boat-5 {
+  background: var(--boat-5);
+  color: var(--color-text);
+}
+.boat-6 {
+  background: var(--boat-6);
+  color: var(--color-white);
+}
+
+/* 着順バッジ */
+.place-1 {
+  color: var(--color-gold);
+  font-weight: 700;
+}
+.place-2 {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+.place-3 {
+  color: var(--color-bronze);
+  font-weight: 700;
+}
+
+/* 払い戻しバッジ */
+.payout-badge {
+  display: inline-block;
+  background: var(--color-surface-warning);
+  color: var(--color-warning-dark);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.payout-trifecta {
+  background: var(--color-surface-error);
+  color: var(--color-error);
+}
+
+/* ローディング / エラー */
+.loading,
+.empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.error {
+  background: var(--color-surface-error);
+  color: var(--color-error);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .data-table {
+    font-size: 11px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 5px 4px;
+  }
+}

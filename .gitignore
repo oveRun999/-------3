@@ -1,0 +1,28 @@
+# Ignore dependencies
+node_modules/
+**/node_modules/
+extracted_data/
+downloaded_lzh/
+extracted_data2/
+downloaded_lzh2/
+extracted_txt/
+csv/
+
+# Nuxt build artifacts
+.nuxt/
+.output/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.log
+
+# Environment files
+.env
+.env.*
+
+# Editor directories
+.vscode/
+.idea/
+boatrace.db
