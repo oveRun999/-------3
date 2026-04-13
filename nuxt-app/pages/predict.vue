@@ -52,7 +52,6 @@
           >
             {{ raceInfo.グレード名 }}
           </span>
-          <span class="accuracy-badge">TOP3的中81%</span>
           <span
             v-if="raceInfo.締切時刻"
             class="deadline-badge"
@@ -136,19 +135,34 @@
             </div>
             <div v-if="sortedBoats.length >= 4" class="bet-item">
               <span class="bet-label">3連単（穴）</span>
-              <span :class="`boat-badge boat-${sortedBoats[3]?.艇番}`">{{ sortedBoats[3]?.艇番 }}</span>
+              <span :class="`boat-badge boat-${sortedBoats[3]?.艇番}`">{{
+                sortedBoats[3]?.艇番
+              }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{ sortedBoats[0]?.艇番 }}</span>
+              <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
+                sortedBoats[0]?.艇番
+              }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{ sortedBoats[1]?.艇番 }}</span>
+              <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{
+                sortedBoats[1]?.艇番
+              }}</span>
             </div>
-            <div v-if="upsetPickBoats.length === 3" class="bet-item bet-item-oozana">
+            <div
+              v-if="upsetPickBoats.length === 3"
+              class="bet-item bet-item-oozana"
+            >
               <span class="bet-label bet-label-oozana">💥 3連単（大穴）</span>
-              <span :class="`boat-badge boat-${upsetPickBoats[0]}`">{{ upsetPickBoats[0] }}</span>
+              <span :class="`boat-badge boat-${upsetPickBoats[0]}`">{{
+                upsetPickBoats[0]
+              }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${upsetPickBoats[1]}`">{{ upsetPickBoats[1] }}</span>
+              <span :class="`boat-badge boat-${upsetPickBoats[1]}`">{{
+                upsetPickBoats[1]
+              }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${upsetPickBoats[2]}`">{{ upsetPickBoats[2] }}</span>
+              <span :class="`boat-badge boat-${upsetPickBoats[2]}`">{{
+                upsetPickBoats[2]
+              }}</span>
             </div>
           </div>
           <!-- 信頼度コメント -->
@@ -195,10 +209,22 @@
       </div>
 
       <!-- 大穴警戒パネル -->
-      <div v-if="upsetAnalysis" class="card upset-card" :class="`upset-${upsetAnalysis.level}`">
+      <div
+        v-if="upsetAnalysis"
+        class="card upset-card"
+        :class="`upset-${upsetAnalysis.level}`"
+      >
         <div class="upset-header">
           <span class="upset-icon">
-            {{ upsetAnalysis.level === '大穴警戒' ? '🚨' : upsetAnalysis.level === '波乱含み' ? '⚠️' : upsetAnalysis.level === 'やや荒れ' ? '🌊' : '✅' }}
+            {{
+              upsetAnalysis.level === "大穴警戒"
+                ? "🚨"
+                : upsetAnalysis.level === "波乱含み"
+                  ? "⚠️"
+                  : upsetAnalysis.level === "やや荒れ"
+                    ? "🌊"
+                    : "✅"
+            }}
           </span>
           <span class="upset-title">大穴分析：{{ upsetAnalysis.level }}</span>
           <div class="upset-meter-wrap">
@@ -209,11 +235,18 @@
                 :class="`upset-fill-${upsetAnalysis.level}`"
               ></div>
             </div>
-            <span class="upset-score-label">{{ upsetAnalysis.score }}pt / 100</span>
+            <span class="upset-score-label"
+              >{{ upsetAnalysis.score }}pt / 100</span
+            >
           </div>
         </div>
         <div v-if="upsetAnalysis.factors.length > 0" class="upset-factors">
-          <span v-for="f in upsetAnalysis.factors" :key="f" class="upset-factor-tag">{{ f }}</span>
+          <span
+            v-for="f in upsetAnalysis.factors"
+            :key="f"
+            class="upset-factor-tag"
+            >{{ f }}</span
+          >
         </div>
         <div v-if="upsetAnalysis.pick" class="upset-pick">
           <span class="upset-pick-label">💥 大穴推奨買い目</span>
@@ -325,28 +358,81 @@
           <!-- 中：7年折れ線グラフ -->
           <div class="chart-col-item">
             <div class="chart-section-label">過去7年トレンド（担当コース）</div>
-            <svg viewBox="0 0 300 200" class="course-svg" preserveAspectRatio="xMidYMid meet">
-              <rect x="44" y="10" width="246" height="164" fill="#f8fafc" rx="3"/>
-              <line v-for="t in [0,20,40,60,80,100]" :key="t"
-                x1="44" :y1="chartY(t)" x2="290" :y2="chartY(t)"
-                :stroke="t===0?'#94a3b8':'#e2e8f0'" stroke-width="1"/>
-              <text v-for="t in [0,20,40,60,80,100]" :key="'y'+t"
-                x="39" :y="chartY(t)+4" text-anchor="end" font-size="9" fill="#94a3b8"
-              >{{ t }}%</text>
-              <line v-for="(yr,i) in allYearLabels" :key="'vg'+i"
-                :x1="lineX(i,allYearLabels.length)" y1="10"
-                :x2="lineX(i,allYearLabels.length)" y2="174"
-                stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="3,3"/>
-              <text v-for="(yr,i) in allYearLabels" :key="'x'+i"
-                :x="lineX(i,allYearLabels.length)" y="192"
-                text-anchor="middle" font-size="9" fill="#64748b">{{ yr }}</text>
+            <svg
+              viewBox="0 0 300 200"
+              class="course-svg"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <rect
+                x="44"
+                y="10"
+                width="246"
+                height="164"
+                fill="#f8fafc"
+                rx="3"
+              />
+              <line
+                v-for="t in [0, 20, 40, 60, 80, 100]"
+                :key="t"
+                x1="44"
+                :y1="chartY(t)"
+                x2="290"
+                :y2="chartY(t)"
+                :stroke="t === 0 ? '#94a3b8' : '#e2e8f0'"
+                stroke-width="1"
+              />
+              <text
+                v-for="t in [0, 20, 40, 60, 80, 100]"
+                :key="'y' + t"
+                x="39"
+                :y="chartY(t) + 4"
+                text-anchor="end"
+                font-size="9"
+                fill="#94a3b8"
+              >
+                {{ t }}%
+              </text>
+              <line
+                v-for="(yr, i) in allYearLabels"
+                :key="'vg' + i"
+                :x1="lineX(i, allYearLabels.length)"
+                y1="10"
+                :x2="lineX(i, allYearLabels.length)"
+                y2="174"
+                stroke="#e2e8f0"
+                stroke-width="0.5"
+                stroke-dasharray="3,3"
+              />
+              <text
+                v-for="(yr, i) in allYearLabels"
+                :key="'x' + i"
+                :x="lineX(i, allYearLabels.length)"
+                y="192"
+                text-anchor="middle"
+                font-size="9"
+                fill="#64748b"
+              >
+                {{ yr }}
+              </text>
               <g v-for="d in chartData" :key="d.艇番">
-                <polyline :points="d.points" :stroke="boatColor(d.艇番)"
-                  stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-                <template v-for="(p,i) in d.raw" :key="i">
-                  <circle v-if="p!==null"
-                    :cx="lineX(i,allYearLabels.length)" :cy="chartY(p)"
-                    r="4" :fill="boatColor(d.艇番)" stroke="white" stroke-width="1.5"/>
+                <polyline
+                  :points="d.points"
+                  :stroke="boatColor(d.艇番)"
+                  stroke-width="2.5"
+                  fill="none"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                />
+                <template v-for="(p, i) in d.raw" :key="i">
+                  <circle
+                    v-if="p !== null"
+                    :cx="lineX(i, allYearLabels.length)"
+                    :cy="chartY(p)"
+                    r="4"
+                    :fill="boatColor(d.艇番)"
+                    stroke="white"
+                    stroke-width="1.5"
+                  />
                 </template>
               </g>
             </svg>
@@ -355,24 +441,58 @@
           <!-- 右：大穴要因レーダー -->
           <div class="chart-col-item">
             <div class="chart-section-label">大穴要因レーダー</div>
-            <svg viewBox="0 0 300 200" class="course-svg" preserveAspectRatio="xMidYMid meet">
-              <polygon v-for="(pts,i) in radarGridPolygons" :key="'grid'+i"
-                :points="pts" fill="none"
-                :stroke="i===3?'#94a3b8':'#e2e8f0'" stroke-width="1"/>
-              <line v-for="ax in radarAxes" :key="'ax'+ax.label"
-                :x1="radarCx" :y1="radarCy" :x2="ax.x2" :y2="ax.y2"
-                stroke="#e2e8f0" stroke-width="1"/>
-              <polygon :points="radarPolygon"
-                fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="2"/>
-              <text v-for="ax in radarAxes" :key="'lbl'+ax.label"
-                :x="ax.labelX" :y="ax.labelY+4"
-                text-anchor="middle" font-size="9" fill="#475569" font-weight="600"
-              >{{ ax.label }}</text>
-              <text v-for="ax in radarAxes" :key="'val'+ax.label"
-                :x="ax.dotX" :y="ax.dotY+3"
-                text-anchor="middle" font-size="8"
-                :fill="ax.score>0?'#ef4444':'#cbd5e1'"
-              >{{ ax.score }}</text>
+            <svg
+              viewBox="0 0 300 200"
+              class="course-svg"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <polygon
+                v-for="(pts, i) in radarGridPolygons"
+                :key="'grid' + i"
+                :points="pts"
+                fill="none"
+                :stroke="i === 3 ? '#94a3b8' : '#e2e8f0'"
+                stroke-width="1"
+              />
+              <line
+                v-for="ax in radarAxes"
+                :key="'ax' + ax.label"
+                :x1="radarCx"
+                :y1="radarCy"
+                :x2="ax.x2"
+                :y2="ax.y2"
+                stroke="#e2e8f0"
+                stroke-width="1"
+              />
+              <polygon
+                :points="radarPolygon"
+                fill="rgba(239,68,68,0.2)"
+                stroke="#ef4444"
+                stroke-width="2"
+              />
+              <text
+                v-for="ax in radarAxes"
+                :key="'lbl' + ax.label"
+                :x="ax.labelX"
+                :y="ax.labelY + 4"
+                text-anchor="middle"
+                font-size="9"
+                fill="#475569"
+                font-weight="600"
+              >
+                {{ ax.label }}
+              </text>
+              <text
+                v-for="ax in radarAxes"
+                :key="'val' + ax.label"
+                :x="ax.dotX"
+                :y="ax.dotY + 3"
+                text-anchor="middle"
+                font-size="8"
+                :fill="ax.score > 0 ? '#ef4444' : '#cbd5e1'"
+              >
+                {{ ax.score }}
+              </text>
             </svg>
           </div>
         </div>
@@ -602,7 +722,13 @@ const venues = ref<{ 会場番号: number; 会場名: string }[]>([]);
 const boats = ref<any[]>([]);
 const weather = ref<any>({});
 const raceInfo = ref<any>({});
-const upsetAnalysis = ref<{ score: number; level: string; factors: string[]; pick: string; factorScores?: Record<string, number> } | null>(null);
+const upsetAnalysis = ref<{
+  score: number;
+  level: string;
+  factors: string[];
+  pick: string;
+  factorScores?: Record<string, number>;
+} | null>(null);
 const pending = ref(false);
 const error = ref("");
 
@@ -779,43 +905,49 @@ const chartData = computed(() =>
       return v ? Math.round((v.sum / v.count) * 10) / 10 : null;
     });
     const points = raw
-      .map((r, i) => r !== null
-        ? `${lineX(i, labels.length).toFixed(1)},${chartY(r).toFixed(1)}`
-        : null)
-      .filter(Boolean).join(" ");
+      .map((r, i) =>
+        r !== null
+          ? `${lineX(i, labels.length).toFixed(1)},${chartY(r).toFixed(1)}`
+          : null,
+      )
+      .filter(Boolean)
+      .join(" ");
     return { 艇番: b.艇番, raw, points };
   }),
 );
 
 // ===== 大穴要因レーダーチャート =====
 const RADAR_FACTORS = [
-  { key: "風速",    max: 25, label: "風速" },
-  { key: "1C級別",  max: 25, label: "1C級別" },
-  { key: "外A1",   max: 18, label: "外A1" },
-  { key: "Fペナ",  max: 15, label: "Fペナ" },
+  { key: "風速", max: 25, label: "風速" },
+  { key: "1C級別", max: 25, label: "1C級別" },
+  { key: "外A1", max: 18, label: "外A1" },
+  { key: "Fペナ", max: 15, label: "Fペナ" },
   { key: "本命不調", max: 10, label: "本命不調" },
   { key: "展示逆転", max: 12, label: "展示逆転" },
-  { key: "接戦度",  max: 20, label: "接戦度" },
-  { key: "波高",   max: 20, label: "波高" },
+  { key: "接戦度", max: 20, label: "接戦度" },
+  { key: "波高", max: 20, label: "波高" },
 ] as const;
 
-const radarCx = 150, radarCy = 96, radarR = 65;
+const radarCx = 150,
+  radarCy = 96,
+  radarR = 65;
 
 const radarAxes = computed(() =>
   RADAR_FACTORS.map((f, i) => {
     const angle = -Math.PI / 2 + (i / RADAR_FACTORS.length) * 2 * Math.PI;
-    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const cos = Math.cos(angle),
+      sin = Math.sin(angle);
     const score = upsetAnalysis.value?.factorScores?.[f.key] ?? 0;
     const v = Math.min(score / f.max, 1);
     return {
       label: f.label,
       score,
-      x2:     +(radarCx + radarR * cos).toFixed(1),
-      y2:     +(radarCy + radarR * sin).toFixed(1),
+      x2: +(radarCx + radarR * cos).toFixed(1),
+      y2: +(radarCy + radarR * sin).toFixed(1),
       labelX: +(radarCx + (radarR + 22) * cos).toFixed(1),
       labelY: +(radarCy + (radarR + 22) * sin).toFixed(1),
-      dotX:   +(radarCx + (radarR * v + (v > 0 ? 8 : 0)) * cos).toFixed(1),
-      dotY:   +(radarCy + (radarR * v + (v > 0 ? 8 : 0)) * sin).toFixed(1),
+      dotX: +(radarCx + (radarR * v + (v > 0 ? 8 : 0)) * cos).toFixed(1),
+      dotY: +(radarCy + (radarR * v + (v > 0 ? 8 : 0)) * sin).toFixed(1),
     };
   }),
 );
@@ -824,18 +956,21 @@ const radarPolygon = computed(() => {
   if (!upsetAnalysis.value?.factorScores) return "";
   return RADAR_FACTORS.map((f, i) => {
     const angle = -Math.PI / 2 + (i / RADAR_FACTORS.length) * 2 * Math.PI;
-    const v = Math.min((upsetAnalysis.value!.factorScores![f.key] ?? 0) / f.max, 1);
+    const v = Math.min(
+      (upsetAnalysis.value!.factorScores![f.key] ?? 0) / f.max,
+      1,
+    );
     return `${(radarCx + radarR * v * Math.cos(angle)).toFixed(1)},${(radarCy + radarR * v * Math.sin(angle)).toFixed(1)}`;
   }).join(" ");
 });
 
 const radarGridPolygons = computed(() =>
-  [0.25, 0.5, 0.75, 1.0].map(scale =>
+  [0.25, 0.5, 0.75, 1.0].map((scale) =>
     RADAR_FACTORS.map((_, i) => {
       const angle = -Math.PI / 2 + (i / RADAR_FACTORS.length) * 2 * Math.PI;
       return `${(radarCx + radarR * scale * Math.cos(angle)).toFixed(1)},${(radarCy + radarR * scale * Math.sin(angle)).toFixed(1)}`;
-    }).join(" ")
-  )
+    }).join(" "),
+  ),
 );
 
 // 棒グラフ用：今回のコースでの複勝率（過去5年加重平均）
@@ -855,11 +990,10 @@ const barData = computed(() =>
     }),
 );
 
-
 // 今日の日付かどうか判定（ローカル時刻で比較）
 const todayStr = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 // 選択中の会場の最初の未終了レースを自動選択
@@ -916,7 +1050,12 @@ async function fetchPredict() {
   racerAnalyses.value = {};
   upsetAnalysis.value = null;
   try {
-    const res = await $fetch<{ weather: any; boats: any[]; raceInfo: any; upsetAnalysis: any }>(
+    const res = await $fetch<{
+      weather: any;
+      boats: any[];
+      raceInfo: any;
+      upsetAnalysis: any;
+    }>(
       `/api/predict?date=${selectedDate.value}&stadium=${selectedStadium.value}&raceNo=${selectedRace.value}`,
     );
     boats.value = res.boats ?? [];
@@ -1379,19 +1518,25 @@ onMounted(fetchVenues);
   color: white;
 }
 .grade-lg-一般 {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   color: white;
 }
 
 /* レース名バー */
 .race-name-bar {
   font-size: 13px;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255, 255, 255, 0.85);
   padding: 4px 0 10px;
   letter-spacing: 0.03em;
 }
-.race-title { font-weight: 700; margin-right: 6px; }
-.race-subtitle { font-size: 11px; opacity: 0.75; }
+.race-title {
+  font-weight: 700;
+  margin-right: 6px;
+}
+.race-subtitle {
+  font-size: 11px;
+  opacity: 0.75;
+}
 
 .racer-link {
   color: inherit;
@@ -1405,12 +1550,26 @@ onMounted(fetchVenues);
 /* ===== 大穴警戒パネル ===== */
 .upset-card {
   margin-bottom: 16px;
-  border-left: 4px solid #94a3b8;
+  border-left: 6px solid #94a3b8;
+  border-radius: 0 8px 8px 0;
+  padding: 10px;
 }
-.upset-大穴警戒 { border-left-color: #ef4444; background: #fff5f5; }
-.upset-波乱含み { border-left-color: #f97316; background: #fff7ed; }
-.upset-やや荒れ { border-left-color: #eab308; background: #fefce8; }
-.upset-本命堅い { border-left-color: #22c55e; background: #f0fdf4; }
+.upset-大穴警戒 {
+  border-left-color: #ef4444;
+  background: #fff5f5;
+}
+.upset-波乱含み {
+  border-left-color: #f97316;
+  background: #fff7ed;
+}
+.upset-やや荒れ {
+  border-left-color: #eab308;
+  background: #fefce8;
+}
+.upset-本命堅い {
+  border-left-color: #22c55e;
+  background: #f0fdf4;
+}
 
 .upset-header {
   display: flex;
@@ -1419,7 +1578,9 @@ onMounted(fetchVenues);
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
-.upset-icon { font-size: 20px; }
+.upset-icon {
+  font-size: 20px;
+}
 .upset-title {
   font-size: 14px;
   font-weight: 700;
@@ -1445,10 +1606,18 @@ onMounted(fetchVenues);
   border-radius: 5px;
   transition: width 0.5s ease;
 }
-.upset-fill-大穴警戒 { background: #ef4444; }
-.upset-fill-波乱含み { background: #f97316; }
-.upset-fill-やや荒れ { background: #eab308; }
-.upset-fill-本命堅い { background: #22c55e; }
+.upset-fill-大穴警戒 {
+  background: #ef4444;
+}
+.upset-fill-波乱含み {
+  background: #f97316;
+}
+.upset-fill-やや荒れ {
+  background: #eab308;
+}
+.upset-fill-本命堅い {
+  background: #22c55e;
+}
 .upset-score-label {
   font-size: 12px;
   font-weight: 700;
@@ -1464,11 +1633,11 @@ onMounted(fetchVenues);
 }
 .upset-factor-tag {
   font-size: 11px;
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   padding: 3px 10px;
   color: #334155;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .upset-pick {
@@ -1476,7 +1645,7 @@ onMounted(fetchVenues);
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: rgba(239,68,68,0.08);
+  background: rgba(239, 68, 68, 0.08);
   border-radius: 8px;
   margin-top: 4px;
 }
@@ -1499,7 +1668,9 @@ onMounted(fetchVenues);
 }
 
 /* コース別複勝率グラフ */
-.course-chart-card { margin-bottom: 16px; }
+.course-chart-card {
+  margin-bottom: 16px;
+}
 .chart-racer-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1516,11 +1687,26 @@ onMounted(fetchVenues);
   gap: 5px;
   font-size: 12px;
 }
-.chart-racer-name { color: #334155; font-weight: 600; }
-.chart-racer-meta { font-size: 11px; font-weight: 700; }
-.chart-two-col { display: flex; gap: 12px; }
-.chart-three-col { display: flex; gap: 10px; }
-.chart-col-item { flex: 1; min-width: 0; }
+.chart-racer-name {
+  color: #334155;
+  font-weight: 600;
+}
+.chart-racer-meta {
+  font-size: 11px;
+  font-weight: 700;
+}
+.chart-two-col {
+  display: flex;
+  gap: 12px;
+}
+.chart-three-col {
+  display: flex;
+  gap: 10px;
+}
+.chart-col-item {
+  flex: 1;
+  min-width: 0;
+}
 .chart-section-label {
   font-size: 11px;
   font-weight: 600;
@@ -1528,14 +1714,33 @@ onMounted(fetchVenues);
   margin-bottom: 4px;
   text-align: center;
 }
-.course-svg { width: 100%; height: auto; display: block; }
-.radar-card { margin-bottom: 16px; }
-.radar-svg { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
+.course-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.radar-card {
+  margin-bottom: 16px;
+}
+.radar-svg {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
 .course-chart-note {
   font-size: 11px;
   color: #94a3b8;
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid #f1f5f9;
+}
+
+.disclaimer {
+  font-size: 10px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 12px;
 }
 </style>
