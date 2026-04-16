@@ -105,6 +105,7 @@
 
       <!-- 会場別テーブル -->
       <div class="table-wrap">
+        <div class="table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -216,6 +217,7 @@
             </tr>
           </tbody>
         </table>
+      </div>
       </div>
 
       <!-- 説明 -->

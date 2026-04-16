@@ -186,9 +186,12 @@
             </template>
           </div>
 
-          <!-- ツイートボタン -->
+          <!-- ツイート＆Noteボタン -->
           <div class="tweet-section">
             <button class="tweet-btn" @click="doTweet">𝕏 ポストする</button>
+            <button class="note-btn" :disabled="noteGenerating" @click="doGenerateNote">
+              {{ noteGenerating ? "⏳ 生成中…" : "📝 Note に記載" }}
+            </button>
             <span
               class="tweet-preview-toggle"
               @click="tweetPreviewOpen = !tweetPreviewOpen"
@@ -506,6 +509,7 @@
             コース(32) + 級別(20) + 展示T(20) + 全国率(14) + ST(30) + 当地率(6)
           </span>
         </div>
+        <div class="table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -674,6 +678,7 @@
           </tbody>
         </table>
       </div>
+      </div>
 
       <!-- 予想の見方ガイド -->
       <div class="guide-card">
@@ -711,13 +716,48 @@
       </div>
     </template>
   </div>
+
+  <!-- Note記事モーダル -->
+  <Teleport to="body">
+    <div v-if="noteModalOpen" class="note-modal-overlay" @click.self="noteModalOpen = false">
+      <div class="note-modal">
+        <div class="note-modal-header">
+          <span class="note-modal-title">📝 Claude が書いた Note 記事</span>
+          <div class="note-modal-actions">
+            <button class="note-copy-btn" @click="copyNoteText" :disabled="!generatedMarkdown">
+              {{ noteCopied ? "✅ コピー済み！" : "📋 全文コピー" }}
+            </button>
+            <button class="note-close-btn" @click="noteModalOpen = false">✕</button>
+          </div>
+        </div>
+        <div class="note-modal-hint">
+          ↑ コピーして Note のエディタにペースト。📸 の箇所にスクショを挿入してください。
+        </div>
+        <!-- 生成中 -->
+        <div v-if="noteGenerating" class="note-generating">
+          <div class="note-spinner"></div>
+          <p>Claudeが記事を考えています…</p>
+        </div>
+        <!-- エラー -->
+        <div v-else-if="noteError" class="note-error">
+          ⚠️ {{ noteError }}
+        </div>
+        <!-- 生成済み -->
+        <div v-else class="note-modal-body">
+          <div class="note-rendered" v-html="renderedMarkdown"></div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
+import { marked } from "marked";
 
 const { selectedDate, dayOfWeek, isWeekend, isSunday } = useSharedDate();
 const { selectedStadium, selectedRace } = useSharedVenue();
+const route = useRoute();
 const venues = ref<{ 会場番号: number; 会場名: string }[]>([]);
 const boats = ref<any[]>([]);
 const weather = ref<any>({});
@@ -742,6 +782,76 @@ const isFinished = computed(() => {
   if (!t) return false;
   return Date.now() > new Date(t).getTime();
 });
+
+// ---- Note記事生成（Claude API） ----
+const noteModalOpen = ref(false);
+const noteCopied = ref(false);
+const noteGenerating = ref(false);
+const noteError = ref("");
+const generatedMarkdown = ref("");
+const renderedMarkdown = computed(() =>
+  generatedMarkdown.value ? marked(generatedMarkdown.value) : ""
+);
+
+// noteText は generate-note API に移行したため削除
+
+async function doGenerateNote() {
+  if (sortedBoats.value.length === 0) return;
+  noteGenerating.value = true;
+  noteError.value = "";
+  generatedMarkdown.value = "";
+  noteModalOpen.value = true;
+
+  const venue = venues.value.find((v) => v.会場番号 === selectedStadium.value)?.会場名 ?? "";
+  const b1 = sortedBoats.value[0], b2 = sortedBoats.value[1], b3 = sortedBoats.value[2], b4 = sortedBoats.value[3];
+
+  try {
+    const res = await $fetch<{ markdown: string }>("/api/generate-note", {
+      method: "POST",
+      body: {
+        date: selectedDate.value,
+        venue,
+        raceNo: selectedRace.value,
+        gradeName: raceInfo.value.グレード名 ?? "",
+        raceName: raceInfo.value.レース名 ?? "",
+        weather: weather.value,
+        boats: sortedBoats.value,
+        scoreDiff: scoreDiff.value,
+        honmei: `${b1.艇番}→${b2.艇番}→${b3?.艇番 ?? "?"}`,
+        taikou: `${b1.艇番}→${b3?.艇番 ?? "?"}→${b2.艇番}`,
+        ana: b4 ? `${b4.艇番}→${b1.艇番}→${b2.艇番}` : null,
+        oozana: upsetPickBoats.value.length === 3
+          ? upsetPickBoats.value.join("→")
+          : null,
+        upsetAnalysis: upsetAnalysis.value,
+      },
+    });
+    generatedMarkdown.value = res.markdown;
+  } catch (e: any) {
+    noteError.value = e.data?.message ?? e.message ?? "生成に失敗しました";
+  } finally {
+    noteGenerating.value = false;
+  }
+}
+
+async function copyNoteText() {
+  const text = generatedMarkdown.value;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    noteCopied.value = true;
+    setTimeout(() => { noteCopied.value = false; }, 2500);
+  } catch {
+    const el = document.createElement("textarea");
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+    noteCopied.value = true;
+    setTimeout(() => { noteCopied.value = false; }, 2500);
+  }
+}
 
 // ---- ツイート ----
 const tweetPreviewOpen = ref(false);
@@ -1030,8 +1140,11 @@ async function fetchVenues() {
       if (!alreadyInList) {
         selectedStadium.value = data[0].会場番号;
       }
-      // 今日の日付のときだけ未終了レースを自動選択
-      if (selectedDate.value === todayStr()) {
+      // クエリでレース番号が指定されていればそれを優先、なければ未終了レースを自動選択
+      const queryRaceNo = route.query.raceNo ? Number(route.query.raceNo) : null;
+      if (queryRaceNo) {
+        selectedRace.value = queryRaceNo;
+      } else if (selectedDate.value === todayStr()) {
         await autoSelectCurrentRace();
       }
       await fetchPredict();
@@ -1089,6 +1202,10 @@ async function onDateChange() {
 }
 
 async function onStadiumChange() {
+  // 今日の日付のときは会場切り替え時も未終了レースを自動選択
+  if (selectedDate.value === todayStr()) {
+    await autoSelectCurrentRace();
+  }
   await fetchPredict();
 }
 
@@ -1457,6 +1574,215 @@ onMounted(fetchVenues);
 }
 .tweet-btn:hover {
   background: rgba(34, 34, 34, 1);
+}
+.note-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #41c9a0;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.note-btn:hover {
+  background: #2db389;
+}
+
+/* Note モーダル */
+.note-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.note-modal {
+  background: #1e2235;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.note-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.note-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.note-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.note-copy-btn {
+  background: #41c9a0;
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.note-copy-btn:hover {
+  background: #2db389;
+}
+.note-close-btn {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.note-close-btn:hover {
+  background: rgba(255,255,255,0.22);
+}
+.note-modal-hint {
+  font-size: 11px;
+  color: #41c9a0;
+  padding: 8px 18px;
+  background: rgba(65,201,160,0.08);
+  flex-shrink: 0;
+}
+.note-modal-body {
+  overflow-y: auto;
+  padding: 16px 20px;
+  flex: 1;
+}
+.note-rendered {
+  font-size: 13px;
+  line-height: 1.8;
+  color: rgba(255,255,255,0.9);
+  font-family: "Helvetica Neue", sans-serif;
+}
+.note-rendered :deep(h1) {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 0 0 14px;
+  color: #fff;
+  border-bottom: 2px solid #41c9a0;
+  padding-bottom: 6px;
+}
+.note-rendered :deep(h2) {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 18px 0 8px;
+  color: #41c9a0;
+}
+.note-rendered :deep(p) {
+  margin: 0 0 10px;
+}
+.note-rendered :deep(blockquote) {
+  border-left: 3px solid #41c9a0;
+  padding: 6px 12px;
+  margin: 10px 0;
+  background: rgba(65,201,160,0.08);
+  border-radius: 0 6px 6px 0;
+  color: rgba(255,255,255,0.8);
+}
+.note-rendered :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.note-rendered :deep(th) {
+  background: rgba(65,201,160,0.2);
+  color: #41c9a0;
+  padding: 6px 10px;
+  text-align: left;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.note-rendered :deep(td) {
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.85);
+}
+.note-rendered :deep(tr:nth-child(even) td) {
+  background: rgba(255,255,255,0.04);
+}
+.note-rendered :deep(ul),
+.note-rendered :deep(ol) {
+  padding-left: 20px;
+  margin: 6px 0 10px;
+}
+.note-rendered :deep(li) {
+  margin-bottom: 4px;
+}
+.note-rendered :deep(input[type="checkbox"]) {
+  margin-right: 6px;
+}
+.note-rendered :deep(hr) {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  margin: 14px 0;
+}
+.note-rendered :deep(strong) {
+  color: #fff;
+  font-weight: 700;
+}
+.note-rendered :deep(em) {
+  color: #94a3b8;
+}
+.note-generating {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+}
+.note-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(65,201,160,0.3);
+  border-top-color: #41c9a0;
+  border-radius: 50%;
+  animation: note-spin 0.8s linear infinite;
+}
+@keyframes note-spin {
+  to { transform: rotate(360deg); }
+}
+.note-error {
+  flex: 1;
+  padding: 24px 18px;
+  color: #f87171;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.note-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .tweet-preview-toggle {
   font-size: 11px;

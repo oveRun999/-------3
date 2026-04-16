@@ -26,6 +26,7 @@
       <div class="card-header">
         <span>検索結果 {{ racers.length }}件</span>
       </div>
+      <div class="table-scroll">
       <table class="data-table">
         <thead>
           <tr>
@@ -72,6 +73,7 @@
           </tr>
         </tbody>
       </table>
+    </div>
     </div>
 
     <!-- 選手分析カード -->
@@ -125,6 +127,7 @@
 
         <!-- コース別成績テーブル（集計値） -->
         <div class="section-title">📊 コース別成績（{{ analysisYears }}年加重平均）</div>
+        <div class="table-scroll">
         <table class="data-table course-table">
           <thead>
             <tr>
@@ -160,10 +163,12 @@
             </tr>
           </tbody>
         </table>
+        </div>
 
         <!-- 年別推移 -->
         <div class="section-title">📈 期別推移（{{ analysisYears }}年分）</div>
         <div class="yearly-scroll">
+          <div class="table-scroll">
           <table class="data-table yearly-table">
             <thead>
               <tr>
@@ -185,6 +190,7 @@
             </tbody>
           </table>
         </div>
+        </div>
       </template>
     </div>
 
@@ -198,7 +204,8 @@
         >
       </div>
       <div v-if="historyPending" class="loading">読み込み中...</div>
-      <table v-else class="data-table">
+      <div v-else class="table-scroll">
+      <table class="data-table">
         <thead>
           <tr>
             <th>日付</th>
@@ -233,6 +240,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>

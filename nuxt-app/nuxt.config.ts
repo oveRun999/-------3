@@ -10,6 +10,11 @@ export default defineNuxtConfig({
     },
   },
 
+  // サーバーサイドのみで使う環境変数
+  runtimeConfig: {
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  },
+
   // グローバルCSS
   css: ["~/assets/css/main.scss"],
 });

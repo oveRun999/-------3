@@ -190,6 +190,7 @@
         </div>
 
         <!-- 予想比較テーブル -->
+        <div class="table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -269,6 +270,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
 
         <!-- 買い目提案 -->
         <div class="bet-section">
@@ -364,6 +366,7 @@
 
         <!-- 実際の着順 + 払い戻し（1つのテーブル内に統合） -->
         <div v-if="race.actualBoats?.length > 0" class="result-section">
+          <div class="table-scroll">
           <table class="data-table result-table">
             <thead>
               <tr>
@@ -468,6 +471,7 @@
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </template>
 

@@ -354,3 +354,8 @@ body {
     padding: 5px 4px;
   }
 }
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

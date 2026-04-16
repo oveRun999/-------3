@@ -11,7 +11,8 @@
           <span
             class="day-badge"
             :class="isSunday ? 'sunday' : isWeekend ? 'saturday' : ''"
-          >{{ dayOfWeek }}</span>
+            >{{ dayOfWeek }}</span
+          >
         </div>
       </div>
       <div>
@@ -29,18 +30,33 @@
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="races.length === 0" class="empty">データがありません</div>
 
-    <!-- レース一覧 -->
-    <div v-for="race in races" :key="race.レース番号" class="card">
+    <!-- レース一覧（未終了が上・終了済みが下） -->
+    <div
+      v-for="race in sortedRaces"
+      :key="race.レース番号"
+      class="card"
+      :class="isFinished(race) ? 'card-finished' : ''"
+    >
       <div class="card-header">
         <span class="race-badge">{{ race.レース番号 }}R</span>
+        <span v-if="isFinished(race)" class="finished-badge">終了</span>
         <span>{{ race.レース名 || "" }}</span>
         <span v-if="race.グレード名" class="grade-label">{{
           race.グレード名
         }}</span>
-        <span class="ml-auto" style="font-weight: normal; font-size: 12px">
-          距離 {{ race.距離 }}m　締切 {{ formatTime(race.締切時刻) }}
-        </span>
+        <div class="ml-auto card-header-right">
+          <span style="font-weight: normal; font-size: 12px">
+            距離 {{ race.距離 }}m　締切 {{ formatTime(race.締切時刻) }}
+          </span>
+          <button
+            class="nav-link nav-link-predict"
+            @click="goToPredict(race.レース番号)"
+          >
+            🤖 AI予想
+          </button>
+        </div>
       </div>
+      <div class="table-scroll">
       <table class="data-table">
         <thead>
           <tr>
@@ -71,7 +87,9 @@
               }}</span>
             </td>
             <td style="text-align: left; font-weight: 600">
-              <NuxtLink :to="`/racers?q=${boat.選手番号}`" class="racer-link">{{ boat.選手名 }}</NuxtLink>
+              <NuxtLink :to="`/racers?q=${boat.選手番号}`" class="racer-link">{{
+                boat.選手名
+              }}</NuxtLink>
             </td>
             <td>{{ boat.選手番号 }}</td>
             <td>{{ GRADE[boat.級別番号] || boat.級別番号 }}</td>
@@ -96,6 +114,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>
@@ -106,7 +125,12 @@ import { computed, ref } from "vue";
 const GRADE: Record<number, string> = { 1: "A1", 2: "A2", 3: "B1", 4: "B2" };
 
 const { selectedDate, dayOfWeek, isWeekend, isSunday } = useSharedDate();
-const { selectedStadium } = useSharedVenue();
+const { selectedStadium, selectedRace } = useSharedVenue();
+const router = useRouter();
+
+function goToPredict(raceNo: number) {
+  router.push({ path: "/predict", query: { raceNo } });
+}
 const venues = ref<{ 会場番号: number; 会場名: string }[]>([]);
 const races = ref<any[]>([]);
 const pending = ref(false);
@@ -114,6 +138,19 @@ const error = ref("");
 
 const fmt2 = (v: any) => (v != null ? Number(v).toFixed(2) : "-");
 const formatTime = (s: string) => (s ? s.slice(11, 16) : "");
+const isFinished = (race: any) =>
+  race.締切時刻 ? Date.now() > new Date(race.締切時刻).getTime() : false;
+
+// 未終了を上・終了済みを下に。それぞれの中ではレース番号順
+const sortedRaces = computed(() => {
+  const active = races.value
+    .filter((r) => !isFinished(r))
+    .sort((a, b) => a.レース番号 - b.レース番号);
+  const finished = races.value
+    .filter((r) => isFinished(r))
+    .sort((a, b) => a.レース番号 - b.レース番号);
+  return [...active, ...finished];
+});
 
 async function fetchVenues() {
   try {
@@ -162,6 +199,49 @@ onMounted(fetchVenues);
 </script>
 
 <style scoped>
+.card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 9px 5px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.2s;
+  height: 30px;
+  cursor: pointer;
+}
+.nav-link:hover {
+  opacity: 0.8;
+}
+.nav-link-predict {
+  background: #333;
+  color: #fff;
+}
+.card-finished {
+  opacity: 0.6;
+}
+.finished-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #64748b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-right: 4px;
+}
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .odds-win {
   font-weight: 700;
   color: #c0392b;
