@@ -29,13 +29,19 @@ if %errorlevel% neq 0 (
 echo [1/2] Fetching latest race data...
 echo.
 
-python fetch_from_openapi.py
+python "%~dp0fetch_from_openapi.py"
+set FETCH_RESULT=%errorlevel%
 
-if %errorlevel% neq 0 (
+if %FETCH_RESULT% neq 0 (
     echo.
-    echo [WARNING] Data fetch failed. Starting app anyway...
-    echo Press any key to continue...
+    echo [WARNING] Data fetch failed ^(exit code: %FETCH_RESULT%^).
+    echo           If this is the first run, please check Python and network.
+    echo.
+    echo Press any key to start the app anyway...
     pause > nul
+) else (
+    echo.
+    echo [1/2] Data fetch done!
 )
 
 echo.

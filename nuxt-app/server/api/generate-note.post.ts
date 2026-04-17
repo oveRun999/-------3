@@ -22,7 +22,10 @@ export default defineEventHandler(async (event) => {
   const apiKey = config.anthropicApiKey;
   // デバッグ用：キーの先頭8文字と長さを出力
   console.log("[generate-note] apiKey length:", apiKey?.length ?? 0);
-  console.log("[generate-note] apiKey prefix:", apiKey?.slice(0, 8) ?? "(empty)");
+  console.log(
+    "[generate-note] apiKey prefix:",
+    apiKey?.slice(0, 8) ?? "(empty)",
+  );
   if (!apiKey) {
     throw createError({
       statusCode: 500,
@@ -51,9 +54,7 @@ export default defineEventHandler(async (event) => {
     weather?.風速 != null ? `- 風速：${weather.風速}m` : null,
     weather?.波高 != null ? `- 波高：${weather.波高}cm` : null,
   ].filter(Boolean);
-  const weatherText = weatherItems.length > 0
-    ? weatherItems.join("\n")
-    : null;
+  const weatherText = weatherItems.length > 0 ? weatherItems.join("\n") : null;
 
   const buyLines = [
     `◎本線: ${honmei}`,
@@ -101,7 +102,7 @@ ${buyLines}
 - # 見出し（h1）は非対応（タイトルがh1のため）なので**絶対に使わない**
 
 ## 記事の構成（必ずこの順番で書いてください）
-1. タイトル（## で始める。会場名・レース番号・特徴を含む具体的なもの）
+1. タイトル（## で始める。日付（${date}）・会場名・レース番号・特徴を含む具体的なもの）
 2. このレースを選んだ理由（## 見出し。語りかける口調で2〜3文）
 3. 自信度・狙い目（## 見出し。⭐の数・スタンス・点数を箇条書きで）
 4. レース当日のコンディション（## 見出し。天候データを箇条書きで）
@@ -127,6 +128,7 @@ ${buyLines}
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 2048,
+    system: `熊本在住の43歳、元エンジニアで現在無職のおじさん競艇予想家になりきって、noteに投稿する競艇予想記事をMarkdown形式で書いてください。柔らかい物腰で、読者に語りかけるような文体でお願いします。「〜ですね」「〜なんですよ」「〜かなと思います」といった口調を使ってください。断定的にならず、あくまで自分の見解として丁寧に伝えてください。一日に何度も予想をする場合は、記事の内容が似通らないように工夫してください。競艇歴:20年、note歴:5年のベテラン予想家です。`,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -136,10 +138,15 @@ ${buyLines}
   // トークン使用量と推定費用をターミナルに出力
   const inputTokens = message.usage.input_tokens;
   const outputTokens = message.usage.output_tokens;
-  const costUsd = (inputTokens / 1_000_000) * 0.80 + (outputTokens / 1_000_000) * 4.00;
+  const costUsd =
+    (inputTokens / 1_000_000) * 0.8 + (outputTokens / 1_000_000) * 4.0;
   const costJpy = costUsd * 150;
-  console.log(`[usage] input: ${inputTokens} tokens / output: ${outputTokens} tokens`);
-  console.log(`[usage] 推定費用: $${costUsd.toFixed(5)} （約${costJpy.toFixed(2)}円）`);
+  console.log(
+    `[usage] input: ${inputTokens} tokens / output: ${outputTokens} tokens`,
+  );
+  console.log(
+    `[usage] 推定費用: $${costUsd.toFixed(5)} （約${costJpy.toFixed(2)}円）`,
+  );
 
   return { markdown: text };
 });
