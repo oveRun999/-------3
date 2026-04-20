@@ -34,6 +34,16 @@ export function getDB(): DatabaseSync {
         PRIMARY KEY (選手番号, 算出期間_至)
       )
     `)
+    _db.exec(`
+      CREATE TABLE IF NOT EXISTS note記事 (
+        日付       TEXT    NOT NULL,
+        会場番号   INTEGER NOT NULL,
+        レース番号 INTEGER NOT NULL,
+        記事内容   TEXT    NOT NULL,
+        保存日時   TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+        PRIMARY KEY (日付, 会場番号, レース番号)
+      )
+    `)
   }
   return _db
 }

@@ -663,6 +663,8 @@ def main():
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
     conn = sqlite3.connect(DB_PATH)
+    conn.execute('PRAGMA synchronous = FULL')   # 強制シャットダウン時のDB破損防止
+    conn.execute('PRAGMA journal_mode = DELETE') # rollback journal（デフォルト、明示的に設定）
     init_db(conn)
 
     success = 0
@@ -675,6 +677,7 @@ def main():
 
     # DB の件数確認
     conn2 = sqlite3.connect(DB_PATH)
+    conn2.execute('PRAGMA synchronous = FULL')
     cur2  = conn2.cursor()
     tables = ['レース情報', '出走表', '直前情報', 'レース結果', '払い戻し']
     logger.info('=== DB件数 ===')

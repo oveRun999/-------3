@@ -315,18 +315,18 @@
             <div class="bet-item">
               <span class="bet-label">3連単（対抗）</span>
               <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[0]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[0]?.艇番 }}</span
+                :class="`boat-badge boat-${taikouSortedFor(race.boats)[0]?.艇番}`"
+                >{{ taikouSortedFor(race.boats)[0]?.艇番 }}</span
               >
               <span class="bet-arrow">→</span>
               <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[2]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[2]?.艇番 }}</span
+                :class="`boat-badge boat-${taikouSortedFor(race.boats)[1]?.艇番}`"
+                >{{ taikouSortedFor(race.boats)[1]?.艇番 }}</span
               >
               <span class="bet-arrow">→</span>
               <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[1]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[1]?.艇番 }}</span
+                :class="`boat-badge boat-${taikouSortedFor(race.boats)[2]?.艇番}`"
+                >{{ taikouSortedFor(race.boats)[2]?.艇番 }}</span
               >
             </div>
             <div class="bet-item">
@@ -347,7 +347,7 @@
               >
             </div>
             <div
-              v-if="upsetPickFor(race.boats).length === 3"
+              v-if="upsetPickFor(race.boats).length === 3 && !isSameAsAnaFor(race)"
               class="bet-item bet-item-oozana-h"
               :class="isOozanaHit(race) ? 'bet-item-oozana-hit' : ''"
             >
@@ -737,6 +737,17 @@ const matchesCategoryType = (race: any, type: CategoryType) => {
 const sortedByPrediction = (boats: any[]) =>
   [...boats].sort((a, b) => a.予想順位 - b.予想順位);
 
+// 対抗用ランキング：1コース-5点、今節点×1.5追加（調子重視）
+const taikouSortedFor = (boats: any[]) =>
+  [...boats]
+    .map((b) => ({
+      ...b,
+      taikouScore: b.score
+        - (b.コース番号 === 1 ? 5 : 0)
+        + (b.scoreDetail?.今節点 ?? 0) * 1.5,
+    }))
+    .sort((a, b) => b.taikouScore - a.taikouScore);
+
 // 大穴買い目（外コース4〜6の中でスコア上位の艇→残り上位2艇）
 // 重複しないよう外コース軸を除いた上位2艇を選ぶ
 const upsetPickFor = (boats: any[]): number[] => {
@@ -750,6 +761,19 @@ const upsetPickFor = (boats: any[]): number[] => {
   const rest = sorted.filter((b: any) => b.艇番 !== axisBoatNo);
   if (rest.length < 2) return [];
   return [axisBoatNo, rest[0].艇番, rest[1].艇番];
+};
+
+// 穴と大穴が同じ買い目かどうか判定
+const isSameAsAnaFor = (race: any): boolean => {
+  const sorted = sortedByPrediction(race.boats);
+  if (sorted.length < 4) return false;
+  const oozana = upsetPickFor(race.boats);
+  return (
+    oozana.length === 3 &&
+    oozana[0] === sorted[3].艇番 &&
+    oozana[1] === sorted[0].艇番 &&
+    oozana[2] === sorted[1].艇番
+  );
 };
 
 // 大穴的中判定（大穴買い目の順番が実際の着順1〜3と一致）
@@ -810,10 +834,10 @@ const judgeClass = (b: any) => {
 const isTaikouHit = (race: any) => {
   if (!race.actualBoats || race.actualBoats.length < 3) return false;
   const actual = race.actualBoats.slice(0, 3).map((b: any) => b.艇番);
-  const sorted = sortedByPrediction(race.boats);
-  if (sorted.length < 3) return false;
-  const taikou = [sorted[0].艇番, sorted[2].艇番, sorted[1].艇番];
-  return actual.every((a, i) => a === taikou[i]);
+  const t = taikouSortedFor(race.boats);
+  if (t.length < 3) return false;
+  const taikou = [t[0].艇番, t[1].艇番, t[2].艇番];
+  return actual.every((a: number, i: number) => a === taikou[i]);
 };
 
 // 穴的中判定

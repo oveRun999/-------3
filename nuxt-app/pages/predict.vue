@@ -89,13 +89,14 @@
         <div class="bet-section">
           <div class="bet-title">💡 注目買い目</div>
           <div class="bet-list">
-            <div class="bet-item">
+            <div class="bet-item" :class="{ 'bet-hit': raceResult && hitTansho }">
               <span class="bet-label">単勝</span>
               <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
                 sortedBoats[0]?.艇番
               }}</span>
+              <span v-if="raceResult && hitTansho" class="hit-badge">🎯 的中</span>
             </div>
-            <div class="bet-item">
+            <div class="bet-item" :class="{ 'bet-hit': raceResult && hit2Rentan }">
               <span class="bet-label">2連単</span>
               <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
                 sortedBoats[0]?.艇番
@@ -104,8 +105,9 @@
               <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{
                 sortedBoats[1]?.艇番
               }}</span>
+              <span v-if="raceResult && hit2Rentan" class="hit-badge">🎯 的中</span>
             </div>
-            <div class="bet-item">
+            <div class="bet-item" :class="{ 'bet-hit': raceResult && hit3RentanHonmei }">
               <span class="bet-label">3連単（本命）</span>
               <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
                 sortedBoats[0]?.艇番
@@ -118,22 +120,24 @@
               <span :class="`boat-badge boat-${sortedBoats[2]?.艇番}`">{{
                 sortedBoats[2]?.艇番
               }}</span>
+              <span v-if="raceResult && hit3RentanHonmei" class="hit-badge">🎯 的中</span>
             </div>
-            <div class="bet-item">
+            <div class="bet-item" :class="{ 'bet-hit': raceResult && hit3RentanTaikou }">
               <span class="bet-label">3連単（対抗）</span>
-              <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
-                sortedBoats[0]?.艇番
+              <span :class="`boat-badge boat-${taikouSortedBoats[0]?.艇番}`">{{
+                taikouSortedBoats[0]?.艇番
               }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${sortedBoats[2]?.艇番}`">{{
-                sortedBoats[2]?.艇番
+              <span :class="`boat-badge boat-${taikouSortedBoats[1]?.艇番}`">{{
+                taikouSortedBoats[1]?.艇番
               }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{
-                sortedBoats[1]?.艇番
+              <span :class="`boat-badge boat-${taikouSortedBoats[2]?.艇番}`">{{
+                taikouSortedBoats[2]?.艇番
               }}</span>
+              <span v-if="raceResult && hit3RentanTaikou" class="hit-badge">🎯 的中</span>
             </div>
-            <div v-if="sortedBoats.length >= 4" class="bet-item">
+            <div v-if="sortedBoats.length >= 4" class="bet-item" :class="{ 'bet-hit': raceResult && hit3RentanAna }">
               <span class="bet-label">3連単（穴）</span>
               <span :class="`boat-badge boat-${sortedBoats[3]?.艇番}`">{{
                 sortedBoats[3]?.艇番
@@ -146,10 +150,12 @@
               <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{
                 sortedBoats[1]?.艇番
               }}</span>
+              <span v-if="raceResult && hit3RentanAna" class="hit-badge">🎯 的中</span>
             </div>
             <div
-              v-if="upsetPickBoats.length === 3"
+              v-if="upsetPickBoats.length === 3 && !isSameAsAna"
               class="bet-item bet-item-oozana"
+              :class="{ 'bet-hit': raceResult && hit3RentanOozana }"
             >
               <span class="bet-label bet-label-oozana">💥 3連単（大穴）</span>
               <span :class="`boat-badge boat-${upsetPickBoats[0]}`">{{
@@ -163,6 +169,7 @@
               <span :class="`boat-badge boat-${upsetPickBoats[2]}`">{{
                 upsetPickBoats[2]
               }}</span>
+              <span v-if="raceResult && hit3RentanOozana" class="hit-badge">🎯 的中</span>
             </div>
           </div>
           <!-- 信頼度コメント -->
@@ -189,8 +196,20 @@
           <!-- ツイート＆Noteボタン -->
           <div class="tweet-section">
             <button class="tweet-btn" @click="doTweet">𝕏 ポストする</button>
-            <button class="note-btn" :disabled="noteGenerating" @click="doGenerateNote">
+            <button
+              class="note-btn"
+              :disabled="noteGenerating"
+              @click="doGenerateNote"
+            >
               {{ noteGenerating ? "⏳ 生成中…" : "📝 Note に記載" }}
+            </button>
+            <button
+              v-if="hasSavedNote"
+              class="note-view-btn"
+              @click="openSavedNote"
+            >
+              📄 記載内容を確認
+              <span v-if="savedNoteAt" class="note-saved-at">{{ savedNoteAt }}</span>
             </button>
             <span
               class="tweet-preview-toggle"
@@ -207,6 +226,56 @@
               {{ tweetText.length }} / 140文字
             </div>
             <pre>{{ tweetText }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- レース結果 -->
+      <div v-if="isFinished && raceResult" class="card result-card">
+        <div class="card-header">🏁 レース結果</div>
+        <div class="result-body">
+          <!-- 的中した買い目 -->
+          <div class="result-hits">
+            <template v-if="hitBets.length > 0">
+              <div class="result-hits-title">🎯 的中</div>
+              <div v-for="h in hitBets" :key="h.label" class="result-hit-item">
+                <span class="result-hit-label">{{ h.label }}</span>
+                <span class="result-hit-combo">{{ h.combo }}</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="result-hits-title result-miss-title">😢 不的中</div>
+            </template>
+          </div>
+          <!-- 着順 -->
+          <ol class="result-order">
+            <li
+              v-for="b in raceResult.boats"
+              :key="b.着順"
+              class="result-row"
+              :class="`result-rank-${b.着順}`"
+            >
+              <span class="result-rank-label">{{ b.着順 }}着</span>
+              <span :class="`boat-badge boat-${b.艇番}`">{{ b.艇番 }}</span>
+              <span class="result-name">{{ shortName(b.選手名) }}</span>
+              <span class="result-course">{{ b.コース番号 }}C</span>
+              <span
+                v-if="b.スタートST != null"
+                :class="b.スタートST < 0 ? 'st-flying' : b.スタートST <= 0.1 ? 'st-fast' : 'result-st'"
+              >ST {{ b.スタートST.toFixed(2) }}</span>
+            </li>
+          </ol>
+          <!-- 配当 -->
+          <div v-if="raceResult.payouts.length > 0" class="result-payouts">
+            <div
+              v-for="p in raceResult.payouts"
+              :key="`${p.種別}-${p.組み合わせ}`"
+              class="payout-row"
+            >
+              <span class="payout-type">{{ p.種別 }}</span>
+              <span class="payout-combo">{{ p.組み合わせ }}</span>
+              <span class="payout-amount">¥{{ p.金額.toLocaleString() }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -261,13 +330,20 @@
       </div>
 
       <!-- コース別複勝率グラフ -->
-      <div v-if="hasChartData" class="card course-chart-card">
+      <div
+        v-if="hasChartData"
+        class="card course-chart-card"
+        ref="chartCardRef"
+      >
         <div class="card-header">
           📊 今回コース別 複勝率
           <span class="header-sub"
             >※ 複勝率 =
             2・3着以内率。棒グラフは過去5年加重平均、折れ線は各年の担当コース成績</span
           >
+          <button class="copy-btn" @click="copyChartData">
+            {{ copiedChart ? "✅" : "📋" }}
+          </button>
         </div>
 
         <!-- 選手一覧（中央上） -->
@@ -502,182 +578,193 @@
       </div>
 
       <!-- 艇別スコア詳細 -->
-      <div class="card">
+      <div class="card" ref="tableCardRef">
         <div class="card-header">
           <span>艇別スコア詳細</span>
           <span class="header-sub">
             コース(32) + 級別(20) + 展示T(20) + 全国率(14) + ST(30) + 当地率(6)
           </span>
+          <button class="copy-btn" @click="copyTableData">
+            {{ copiedTable ? "✅" : "📋" }}
+          </button>
         </div>
         <div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>順位</th>
-              <th>艇</th>
-              <th>選手名</th>
-              <th>級別</th>
-              <th>コース</th>
-              <th>全国率</th>
-              <th>当地率</th>
-              <th>平均ST</th>
-              <th>展示T</th>
-              <th>展示ST</th>
-              <th>体重</th>
-              <th>増減</th>
-              <th>チルト</th>
-              <th>今節</th>
-              <th>F</th>
-              <th>単勝</th>
-              <th>複勝</th>
-              <th style="min-width: 80px">スコア</th>
-              <th style="min-width: 200px">スコア内訳</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="b in sortedBoats"
-              :key="b.艇番"
-              :class="`rank-row rank-${b.rank}`"
-            >
-              <td>
-                <span class="rank-badge">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>順位</th>
+                <th>艇</th>
+                <th>選手名</th>
+                <th>級別</th>
+                <th>コース</th>
+                <th>全国率</th>
+                <th>当地率</th>
+                <th>平均ST</th>
+                <th>展示T</th>
+                <th>展示ST</th>
+                <th>体重</th>
+                <th>増減</th>
+                <th>チルト</th>
+                <th>今節</th>
+                <th>F</th>
+                <th>単勝</th>
+                <th>複勝</th>
+                <th style="min-width: 80px">スコア</th>
+                <th style="min-width: 200px">スコア内訳</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="b in sortedBoats"
+                :key="b.艇番"
+                :class="`rank-row rank-${b.rank}`"
+              >
+                <td>
+                  <span class="rank-badge">
+                    {{
+                      b.rank === 1
+                        ? "🥇"
+                        : b.rank === 2
+                          ? "🥈"
+                          : b.rank === 3
+                            ? "🥉"
+                            : b.rank
+                    }}
+                  </span>
+                </td>
+                <td>
+                  <span :class="`boat-badge boat-${b.艇番}`">{{ b.艇番 }}</span>
+                </td>
+                <td
+                  style="
+                    text-align: left;
+                    font-weight: 700;
+                    white-space: nowrap;
+                  "
+                >
+                  <NuxtLink
+                    :to="`/racers?q=${b.選手番号}`"
+                    class="racer-link"
+                    >{{ b.選手名 }}</NuxtLink
+                  >
+                </td>
+                <td>
+                  <span :class="`grade-badge grade-${b.級別}`">{{
+                    b.級別
+                  }}</span>
+                </td>
+                <td>
+                  <strong>{{ b.コース番号 }}</strong>
+                </td>
+                <td>{{ fmt2(b.全国勝率) }}</td>
+                <td>{{ fmt2(b.当地勝率) }}</td>
+                <td
+                  :class="b.平均ST != null && b.平均ST <= 0.14 ? 'st-fast' : ''"
+                >
+                  {{ b.平均ST != null ? b.平均ST.toFixed(2) : "-" }}
+                </td>
+                <td :class="b.展示タイム === fastestTime ? 'fastest' : ''">
+                  {{ b.展示タイム != null ? b.展示タイム.toFixed(2) : "-" }}
+                </td>
+                <td
+                  :class="
+                    b.スタートST != null && b.スタートST <= 0.1
+                      ? 'st-fast'
+                      : b.スタートST != null && b.スタートST < 0
+                        ? 'st-flying'
+                        : ''
+                  "
+                >
+                  {{ b.スタートST != null ? b.スタートST.toFixed(2) : "-" }}
+                </td>
+                <td>{{ b.体重 != null ? b.体重 + "kg" : "-" }}</td>
+                <td
+                  :class="
+                    b.体重調整 != null && b.体重調整 > 0 ? 'weight-plus' : ''
+                  "
+                >
                   {{
-                    b.rank === 1
-                      ? "🥇"
-                      : b.rank === 2
-                        ? "🥈"
-                        : b.rank === 3
-                          ? "🥉"
-                          : b.rank
+                    b.体重調整 != null && b.体重調整 !== 0
+                      ? (b.体重調整 > 0 ? "+" : "") + b.体重調整
+                      : "-"
                   }}
-                </span>
-              </td>
-              <td>
-                <span :class="`boat-badge boat-${b.艇番}`">{{ b.艇番 }}</span>
-              </td>
-              <td
-                style="text-align: left; font-weight: 700; white-space: nowrap"
-              >
-                <NuxtLink :to="`/racers?q=${b.選手番号}`" class="racer-link">{{
-                  b.選手名
-                }}</NuxtLink>
-              </td>
-              <td>
-                <span :class="`grade-badge grade-${b.級別}`">{{ b.級別 }}</span>
-              </td>
-              <td>
-                <strong>{{ b.コース番号 }}</strong>
-              </td>
-              <td>{{ fmt2(b.全国勝率) }}</td>
-              <td>{{ fmt2(b.当地勝率) }}</td>
-              <td
-                :class="b.平均ST != null && b.平均ST <= 0.14 ? 'st-fast' : ''"
-              >
-                {{ b.平均ST != null ? b.平均ST.toFixed(2) : "-" }}
-              </td>
-              <td :class="b.展示タイム === fastestTime ? 'fastest' : ''">
-                {{ b.展示タイム != null ? b.展示タイム.toFixed(2) : "-" }}
-              </td>
-              <td
-                :class="
-                  b.スタートST != null && b.スタートST <= 0.1
-                    ? 'st-fast'
-                    : b.スタートST != null && b.スタートST < 0
-                      ? 'st-flying'
-                      : ''
-                "
-              >
-                {{ b.スタートST != null ? b.スタートST.toFixed(2) : "-" }}
-              </td>
-              <td>{{ b.体重 != null ? b.体重 + "kg" : "-" }}</td>
-              <td
-                :class="
-                  b.体重調整 != null && b.体重調整 > 0 ? 'weight-plus' : ''
-                "
-              >
-                {{
-                  b.体重調整 != null && b.体重調整 !== 0
-                    ? (b.体重調整 > 0 ? "+" : "") + b.体重調整
-                    : "-"
-                }}
-              </td>
-              <td>
-                {{ b.チルト調整 != null ? b.チルト調整.toFixed(1) : "-" }}
-              </td>
-              <td>
-                <template v-if="b.今節レース数 > 0">
-                  {{ b.今節成績?.toFixed(1) }}
-                  <span class="session-count">({{ b.今節レース数 }}走)</span>
-                </template>
-                <template v-else>-</template>
-              </td>
-              <td :class="b.F数 > 0 ? 'foul' : ''">{{ b.F数 ?? 0 }}</td>
-              <td>
-                <span v-if="b.単勝払い戻し != null" class="odds-win">
-                  ¥{{ b.単勝払い戻し.toLocaleString() }}
-                </span>
-                <span v-else class="odds-none">-</span>
-              </td>
-              <td>
-                <span v-if="b.複勝払い戻し != null" class="odds-place">
-                  ¥{{ b.複勝払い戻し.toLocaleString() }}
-                </span>
-                <span v-else class="odds-none">-</span>
-              </td>
-              <td>
-                <span class="score-value" :class="`score-rank-${b.rank}`">
-                  {{ b.score.toFixed(1) }}
-                </span>
-              </td>
-              <td>
-                <div class="score-bar-wrap">
-                  <div
-                    class="score-bar"
-                    :style="`width:${scoreBarWidth(b.score)}%`"
-                    :class="`score-bar-rank-${b.rank}`"
-                  ></div>
-                </div>
-                <div class="score-detail-text" v-if="b.scoreDetail">
-                  <span class="sd-item sd-course" title="コース点"
-                    >C:{{ b.scoreDetail.コース点 }}</span
-                  >
-                  <span class="sd-item sd-grade" title="級別点"
-                    >G:{{ b.scoreDetail.級別点 }}</span
-                  >
-                  <span class="sd-item" title="全国勝率点"
-                    >W:{{ b.scoreDetail.全国勝率点 }}</span
-                  >
-                  <span class="sd-item" title="当地勝率点"
-                    >L:{{ b.scoreDetail.当地勝率点 }}</span
-                  >
-                  <span class="sd-item" title="ST点"
-                    >ST:{{ b.scoreDetail.ST点 }}</span
-                  >
-                  <span
-                    class="sd-item"
-                    :class="b.scoreDetail.展示点 < 0 ? 'neg' : ''"
-                    title="展示点"
-                    >T:{{ b.scoreDetail.展示点 }}</span
-                  >
-                  <span
-                    class="sd-item"
-                    v-if="b.scoreDetail.今節点 !== 0"
-                    title="今節点"
-                    >S:{{ b.scoreDetail.今節点 }}</span
-                  >
-                  <span
-                    class="sd-item neg"
-                    v-if="b.scoreDetail.Fペナルティ < 0"
-                    title="Fペナルティ"
-                    >F:{{ b.scoreDetail.Fペナルティ }}</span
-                  >
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                </td>
+                <td>
+                  {{ b.チルト調整 != null ? b.チルト調整.toFixed(1) : "-" }}
+                </td>
+                <td>
+                  <template v-if="b.今節レース数 > 0">
+                    {{ b.今節成績?.toFixed(1) }}
+                    <span class="session-count">({{ b.今節レース数 }}走)</span>
+                  </template>
+                  <template v-else>-</template>
+                </td>
+                <td :class="b.F数 > 0 ? 'foul' : ''">{{ b.F数 ?? 0 }}</td>
+                <td>
+                  <span v-if="b.単勝払い戻し != null" class="odds-win">
+                    ¥{{ b.単勝払い戻し.toLocaleString() }}
+                  </span>
+                  <span v-else class="odds-none">-</span>
+                </td>
+                <td>
+                  <span v-if="b.複勝払い戻し != null" class="odds-place">
+                    ¥{{ b.複勝払い戻し.toLocaleString() }}
+                  </span>
+                  <span v-else class="odds-none">-</span>
+                </td>
+                <td>
+                  <span class="score-value" :class="`score-rank-${b.rank}`">
+                    {{ b.score.toFixed(1) }}
+                  </span>
+                </td>
+                <td>
+                  <div class="score-bar-wrap">
+                    <div
+                      class="score-bar"
+                      :style="`width:${scoreBarWidth(b.score)}%`"
+                      :class="`score-bar-rank-${b.rank}`"
+                    ></div>
+                  </div>
+                  <div class="score-detail-text" v-if="b.scoreDetail">
+                    <span class="sd-item sd-course" title="コース点"
+                      >C:{{ b.scoreDetail.コース点 }}</span
+                    >
+                    <span class="sd-item sd-grade" title="級別点"
+                      >G:{{ b.scoreDetail.級別点 }}</span
+                    >
+                    <span class="sd-item" title="全国勝率点"
+                      >W:{{ b.scoreDetail.全国勝率点 }}</span
+                    >
+                    <span class="sd-item" title="当地勝率点"
+                      >L:{{ b.scoreDetail.当地勝率点 }}</span
+                    >
+                    <span class="sd-item" title="ST点"
+                      >ST:{{ b.scoreDetail.ST点 }}</span
+                    >
+                    <span
+                      class="sd-item"
+                      :class="b.scoreDetail.展示点 < 0 ? 'neg' : ''"
+                      title="展示点"
+                      >T:{{ b.scoreDetail.展示点 }}</span
+                    >
+                    <span
+                      class="sd-item"
+                      v-if="b.scoreDetail.今節点 !== 0"
+                      title="今節点"
+                      >S:{{ b.scoreDetail.今節点 }}</span
+                    >
+                    <span
+                      class="sd-item neg"
+                      v-if="b.scoreDetail.Fペナルティ < 0"
+                      title="Fペナルティ"
+                      >F:{{ b.scoreDetail.Fペナルティ }}</span
+                    >
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- 予想の見方ガイド -->
@@ -719,19 +806,30 @@
 
   <!-- Note記事モーダル -->
   <Teleport to="body">
-    <div v-if="noteModalOpen" class="note-modal-overlay" @click.self="noteModalOpen = false">
+    <div
+      v-if="noteModalOpen"
+      class="note-modal-overlay"
+      @click.self="noteModalOpen = false"
+    >
       <div class="note-modal">
         <div class="note-modal-header">
           <span class="note-modal-title">📝 Claude が書いた Note 記事</span>
           <div class="note-modal-actions">
-            <button class="note-copy-btn" @click="copyNoteText" :disabled="!generatedMarkdown">
+            <button
+              class="note-copy-btn"
+              @click="copyNoteText"
+              :disabled="!generatedMarkdown"
+            >
               {{ noteCopied ? "✅ コピー済み！" : "📋 全文コピー" }}
             </button>
-            <button class="note-close-btn" @click="noteModalOpen = false">✕</button>
+            <button class="note-close-btn" @click="noteModalOpen = false">
+              ✕
+            </button>
           </div>
         </div>
         <div class="note-modal-hint">
-          ↑ コピーして Note のエディタにペースト。📸 の箇所にスクショを挿入してください。
+          ↑ コピーして Note のエディタにペースト。📸
+          の箇所にスクショを挿入してください。
         </div>
         <!-- 生成中 -->
         <div v-if="noteGenerating" class="note-generating">
@@ -739,9 +837,7 @@
           <p>Claudeが記事を考えています…</p>
         </div>
         <!-- エラー -->
-        <div v-else-if="noteError" class="note-error">
-          ⚠️ {{ noteError }}
-        </div>
+        <div v-else-if="noteError" class="note-error">⚠️ {{ noteError }}</div>
         <!-- 生成済み -->
         <div v-else class="note-modal-body">
           <div class="note-rendered" v-html="renderedMarkdown"></div>
@@ -752,7 +848,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, type Ref } from "vue";
 import { marked } from "marked";
 
 const { selectedDate, dayOfWeek, isWeekend, isSunday } = useSharedDate();
@@ -762,6 +858,7 @@ const venues = ref<{ 会場番号: number; 会場名: string }[]>([]);
 const boats = ref<any[]>([]);
 const weather = ref<any>({});
 const raceInfo = ref<any>({});
+const raceResult = ref<{ boats: any[]; payouts: any[] } | null>(null);
 const upsetAnalysis = ref<{
   score: number;
   level: string;
@@ -790,8 +887,56 @@ const noteGenerating = ref(false);
 const noteError = ref("");
 const generatedMarkdown = ref("");
 const renderedMarkdown = computed(() =>
-  generatedMarkdown.value ? marked(generatedMarkdown.value) : ""
+  generatedMarkdown.value ? marked(generatedMarkdown.value) : "",
 );
+
+// 現在のレースに保存済み記事があるか
+const hasSavedNote = ref(false);
+const savedNoteAt  = ref<string | null>(null);
+
+// レース切り替え時にDBから保存済みフラグを確認
+watch(
+  [selectedDate, selectedStadium, selectedRace],
+  async () => {
+    if (!selectedStadium.value || !selectedRace.value) return;
+    try {
+      const res = await $fetch<{ found: boolean; savedAt?: string }>(
+        `/api/note-article?date=${selectedDate.value}&stadium=${selectedStadium.value}&raceNo=${selectedRace.value}`,
+      );
+      hasSavedNote.value = res.found;
+      savedNoteAt.value  = res.found ? (res.savedAt ?? null) : null;
+    } catch {
+      hasSavedNote.value = false;
+    }
+  },
+  { immediate: true },
+);
+
+async function saveNoteToStorage(markdown: string) {
+  await $fetch("/api/note-article", {
+    method: "POST",
+    body: {
+      date:     selectedDate.value,
+      stadium:  selectedStadium.value,
+      raceNo:   selectedRace.value,
+      markdown,
+    },
+  });
+  hasSavedNote.value = true;
+}
+
+async function openSavedNote() {
+  try {
+    const res = await $fetch<{ found: boolean; markdown?: string; savedAt?: string }>(
+      `/api/note-article?date=${selectedDate.value}&stadium=${selectedStadium.value}&raceNo=${selectedRace.value}`,
+    );
+    if (!res.found || !res.markdown) return;
+    generatedMarkdown.value = res.markdown;
+    savedNoteAt.value       = res.savedAt ?? null;
+    noteError.value         = "";
+    noteModalOpen.value     = true;
+  } catch {}
+}
 
 // noteText は generate-note API に移行したため削除
 
@@ -802,8 +947,13 @@ async function doGenerateNote() {
   generatedMarkdown.value = "";
   noteModalOpen.value = true;
 
-  const venue = venues.value.find((v) => v.会場番号 === selectedStadium.value)?.会場名 ?? "";
-  const b1 = sortedBoats.value[0], b2 = sortedBoats.value[1], b3 = sortedBoats.value[2], b4 = sortedBoats.value[3];
+  const venue =
+    venues.value.find((v) => v.会場番号 === selectedStadium.value)?.会場名 ??
+    "";
+  const b1 = sortedBoats.value[0],
+    b2 = sortedBoats.value[1],
+    b3 = sortedBoats.value[2],
+    b4 = sortedBoats.value[3];
 
   try {
     const res = await $fetch<{ markdown: string }>("/api/generate-note", {
@@ -818,15 +968,20 @@ async function doGenerateNote() {
         boats: sortedBoats.value,
         scoreDiff: scoreDiff.value,
         honmei: `${b1.艇番}→${b2.艇番}→${b3?.艇番 ?? "?"}`,
-        taikou: `${b1.艇番}→${b3?.艇番 ?? "?"}→${b2.艇番}`,
+        taikou: (() => {
+          const t = taikouSortedBoats.value;
+          return `${t[0]?.艇番}→${t[1]?.艇番 ?? "?"}→${t[2]?.艇番 ?? "?"}`;
+        })(),
         ana: b4 ? `${b4.艇番}→${b1.艇番}→${b2.艇番}` : null,
-        oozana: upsetPickBoats.value.length === 3
-          ? upsetPickBoats.value.join("→")
-          : null,
+        oozana:
+          !isSameAsAna.value && upsetPickBoats.value.length === 3
+            ? upsetPickBoats.value.join("→")
+            : null,
         upsetAnalysis: upsetAnalysis.value,
       },
     });
     generatedMarkdown.value = res.markdown;
+    await saveNoteToStorage(res.markdown);
   } catch (e: any) {
     noteError.value = e.data?.message ?? e.message ?? "生成に失敗しました";
   } finally {
@@ -840,7 +995,9 @@ async function copyNoteText() {
   try {
     await navigator.clipboard.writeText(text);
     noteCopied.value = true;
-    setTimeout(() => { noteCopied.value = false; }, 2500);
+    setTimeout(() => {
+      noteCopied.value = false;
+    }, 2500);
   } catch {
     const el = document.createElement("textarea");
     el.value = text;
@@ -849,7 +1006,9 @@ async function copyNoteText() {
     document.execCommand("copy");
     document.body.removeChild(el);
     noteCopied.value = true;
-    setTimeout(() => { noteCopied.value = false; }, 2500);
+    setTimeout(() => {
+      noteCopied.value = false;
+    }, 2500);
   }
 }
 
@@ -888,7 +1047,10 @@ const tweetText = computed(() => {
 
   // 買い目
   const honmei = `${b1.艇番}→${b2.艇番}→${b3?.艇番 ?? "?"}`; // ◎本命
-  const taikou = `${b1.艇番}→${b3?.艇番 ?? "?"}→${b2.艇番}`; // ○対抗（2・3着入替）
+  const tb1 = taikouSortedBoats.value[0],
+    tb2 = taikouSortedBoats.value[1],
+    tb3 = taikouSortedBoats.value[2];
+  const taikou = `${tb1?.艇番}→${tb2?.艇番 ?? "?"}→${tb3?.艇番 ?? "?"}`; // ○対抗（調子重視）
   const ana = b4 ? `${b4.艇番}→${b1.艇番}→${b2.艇番}` : ""; // △穴（4位が1着）
 
   const gradeStr = raceInfo.value.グレード名
@@ -930,6 +1092,91 @@ const upsetPickBoats = computed(() => {
   const rest = sortedBoats.value.filter((b) => b.艇番 !== axisNo);
   if (rest.length < 2) return [];
   return [axisNo, rest[0].艇番, rest[1].艇番];
+});
+
+// 対抗用スコア：1コースを少し減点し、今節調子を重視したランキング
+const taikouSortedBoats = computed(() =>
+  [...boats.value]
+    .map((b) => {
+      const coursePenalty = b.コース番号 === 1 ? 5 : 0;
+      const sessionBonus = (b.scoreDetail?.今節点 ?? 0) * 1.5; // 今節点を追加で1.5倍上乗せ
+      return { ...b, taikouScore: b.score - coursePenalty + sessionBonus };
+    })
+    .sort((a, b) => b.taikouScore - a.taikouScore),
+);
+
+// 穴と大穴が同じ買い目かどうか判定
+const isSameAsAna = computed(() => {
+  if (sortedBoats.value.length < 4 || upsetPickBoats.value.length !== 3)
+    return false;
+  const [o1, o2, o3] = upsetPickBoats.value;
+  return (
+    o1 === sortedBoats.value[3].艇番 &&
+    o2 === sortedBoats.value[0].艇番 &&
+    o3 === sortedBoats.value[1].艇番
+  );
+});
+
+// ---- 的中判定 ----
+// raceResult.boats は着順昇順で並んでいる前提
+const resultOrder = computed(() =>
+  raceResult.value?.boats
+    .slice()
+    .sort((a, b) => a.着順 - b.着順)
+    .map((b) => b.艇番) ?? [],
+);
+const hitTansho = computed(() =>
+  resultOrder.value.length >= 1 &&
+  sortedBoats.value[0]?.艇番 === resultOrder.value[0],
+);
+const hit2Rentan = computed(() =>
+  resultOrder.value.length >= 2 &&
+  sortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
+  sortedBoats.value[1]?.艇番 === resultOrder.value[1],
+);
+const hit3RentanHonmei = computed(() =>
+  resultOrder.value.length >= 3 &&
+  sortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
+  sortedBoats.value[1]?.艇番 === resultOrder.value[1] &&
+  sortedBoats.value[2]?.艇番 === resultOrder.value[2],
+);
+const hit3RentanTaikou = computed(() =>
+  resultOrder.value.length >= 3 &&
+  taikouSortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
+  taikouSortedBoats.value[1]?.艇番 === resultOrder.value[1] &&
+  taikouSortedBoats.value[2]?.艇番 === resultOrder.value[2],
+);
+const hit3RentanAna = computed(() =>
+  resultOrder.value.length >= 3 &&
+  sortedBoats.value[3]?.艇番 === resultOrder.value[0] &&
+  sortedBoats.value[0]?.艇番 === resultOrder.value[1] &&
+  sortedBoats.value[1]?.艇番 === resultOrder.value[2],
+);
+const hit3RentanOozana = computed(() =>
+  resultOrder.value.length >= 3 &&
+  upsetPickBoats.value.length === 3 &&
+  upsetPickBoats.value[0] === resultOrder.value[0] &&
+  upsetPickBoats.value[1] === resultOrder.value[1] &&
+  upsetPickBoats.value[2] === resultOrder.value[2],
+);
+
+// 的中した買い目の一覧
+const hitBets = computed(() => {
+  if (!raceResult.value) return [];
+  const list: { label: string; combo: string }[] = [];
+  if (hitTansho.value)
+    list.push({ label: "単勝", combo: `${sortedBoats.value[0]?.艇番}` });
+  if (hit2Rentan.value)
+    list.push({ label: "2連単", combo: `${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}` });
+  if (hit3RentanHonmei.value)
+    list.push({ label: "3連単（本命）", combo: `${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}→${sortedBoats.value[2]?.艇番}` });
+  if (hit3RentanTaikou.value)
+    list.push({ label: "3連単（対抗）", combo: `${taikouSortedBoats.value[0]?.艇番}→${taikouSortedBoats.value[1]?.艇番}→${taikouSortedBoats.value[2]?.艇番}` });
+  if (hit3RentanAna.value)
+    list.push({ label: "3連単（穴）", combo: `${sortedBoats.value[3]?.艇番}→${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}` });
+  if (hit3RentanOozana.value)
+    list.push({ label: "3連単（大穴）", combo: `${upsetPickBoats.value[0]}→${upsetPickBoats.value[1]}→${upsetPickBoats.value[2]}` });
+  return list;
 });
 
 const fastestTime = computed(() => {
@@ -1141,7 +1388,9 @@ async function fetchVenues() {
         selectedStadium.value = data[0].会場番号;
       }
       // クエリでレース番号が指定されていればそれを優先、なければ未終了レースを自動選択
-      const queryRaceNo = route.query.raceNo ? Number(route.query.raceNo) : null;
+      const queryRaceNo = route.query.raceNo
+        ? Number(route.query.raceNo)
+        : null;
       if (queryRaceNo) {
         selectedRace.value = queryRaceNo;
       } else if (selectedDate.value === todayStr()) {
@@ -1162,6 +1411,7 @@ async function fetchPredict() {
   error.value = "";
   racerAnalyses.value = {};
   upsetAnalysis.value = null;
+  raceResult.value = null;
   try {
     const res = await $fetch<{
       weather: any;
@@ -1175,6 +1425,19 @@ async function fetchPredict() {
     weather.value = res.weather ?? {};
     raceInfo.value = res.raceInfo ?? {};
     upsetAnalysis.value = res.upsetAnalysis ?? null;
+
+    // 締切済みならレース結果を取得
+    const deadline = raceInfo.value.締切時刻;
+    if (deadline && new Date(deadline).getTime() < Date.now()) {
+      try {
+        const results = await $fetch<any[]>(
+          `/api/results?date=${selectedDate.value}&stadium=${selectedStadium.value}`,
+        );
+        const found = results.find((r) => r.raceNo === selectedRace.value);
+        raceResult.value = found ?? null;
+      } catch {}
+    }
+
     // 選手コース成績を並列取得してグラフに反映
     await Promise.all(
       boats.value.map(async (b) => {
@@ -1210,6 +1473,41 @@ async function onStadiumChange() {
 }
 
 onMounted(fetchVenues);
+
+// ---- クリップボードコピー（スクリーンショット） ----
+const chartCardRef = ref<HTMLElement | null>(null);
+const tableCardRef = ref<HTMLElement | null>(null);
+const copiedChart = ref(false);
+const copiedTable = ref(false);
+
+async function captureAndCopy(el: HTMLElement | null, flag: Ref<boolean>) {
+  if (!el) return;
+  const html2canvas = (await import("html2canvas")).default;
+  const canvas = await html2canvas(el, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: null,
+  });
+  canvas.toBlob(async (blob) => {
+    if (!blob) return;
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      flag.value = true;
+      setTimeout(() => (flag.value = false), 1500);
+    } catch {
+      // フォールバック：png をダウンロード
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = "capture.png";
+      a.click();
+    }
+  }, "image/png");
+}
+
+const copyChartData = () => captureAndCopy(chartCardRef.value, copiedChart);
+const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
 </script>
 
 <style scoped lang="scss">
@@ -1377,6 +1675,168 @@ onMounted(fetchVenues);
   font-size: 11px;
   opacity: 0.85;
   padding-top: 6px;
+}
+
+/* ===== 的中マーク ===== */
+.bet-hit {
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 6px;
+  outline: 2px solid #16a34a;
+}
+.hit-badge {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #16a34a;
+  white-space: nowrap;
+  animation: hit-pop 0.4s ease;
+}
+@keyframes hit-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ===== レース結果 ===== */
+.result-card {
+  margin-bottom: 16px;
+}
+.result-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+.result-hits {
+  flex: 0 0 auto;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  &:has(.result-miss-title) {
+    background: #f8fafc;
+    border-color: var(--color-border);
+  }
+}
+.result-hits-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #16a34a;
+  margin-bottom: 2px;
+}
+.result-miss-title {
+  color: #94a3b8;
+  background: none;
+}
+.result-hit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.result-hit-label {
+  font-size: 10px;
+  color: #64748b;
+}
+.result-hit-combo {
+  font-size: 15px;
+  font-weight: 800;
+  color: #15803d;
+  letter-spacing: 0.05em;
+}
+.result-order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  font-size: 13px;
+  &.result-rank-1 { border-left-color: #f59e0b; }
+  &.result-rank-2 { border-left-color: #94a3b8; }
+  &.result-rank-3 { border-left-color: #b45309; }
+}
+.result-rank-label {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  min-width: 28px;
+}
+.result-name {
+  font-weight: 600;
+  min-width: 60px;
+}
+.result-course {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.result-st {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.result-payouts {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 4px 12px;
+  align-content: start;
+  flex: 1 1 260px;
+}
+.payout-row {
+  display: contents;
+}
+.payout-type {
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-align: center;
+  white-space: nowrap;
+  align-self: center;
+}
+.payout-combo {
+  font-size: 13px;
+  font-weight: 600;
+  align-self: center;
+}
+.payout-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: #dc2626;
+  align-self: center;
+}
+
+/* クリップボードコピーボタン */
+.copy-btn {
+  margin-left: auto;
+  padding: 2px 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
 }
 
 /* カードヘッダー補足 */
@@ -1592,6 +2052,31 @@ onMounted(fetchVenues);
 .note-btn:hover {
   background: #2db389;
 }
+.note-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: #41c9a0;
+  border: 2px solid #41c9a0;
+  border-radius: 20px;
+  padding: 5px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  flex-direction: column;
+  line-height: 1.2;
+  &:hover {
+    background: #41c9a0;
+    color: #fff;
+  }
+}
+.note-saved-at {
+  font-size: 9px;
+  font-weight: 400;
+  opacity: 0.8;
+}
 
 /* Note モーダル */
 .note-modal-overlay {
@@ -1612,7 +2097,7 @@ onMounted(fetchVenues);
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
 .note-modal-header {
@@ -1620,7 +2105,7 @@ onMounted(fetchVenues);
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 .note-modal-title {
@@ -1649,7 +2134,7 @@ onMounted(fetchVenues);
   background: #2db389;
 }
 .note-close-btn {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
   border: none;
   border-radius: 50%;
@@ -1662,13 +2147,13 @@ onMounted(fetchVenues);
   justify-content: center;
 }
 .note-close-btn:hover {
-  background: rgba(255,255,255,0.22);
+  background: rgba(255, 255, 255, 0.22);
 }
 .note-modal-hint {
   font-size: 11px;
   color: #41c9a0;
   padding: 8px 18px;
-  background: rgba(65,201,160,0.08);
+  background: rgba(65, 201, 160, 0.08);
   flex-shrink: 0;
 }
 .note-modal-body {
@@ -1679,7 +2164,7 @@ onMounted(fetchVenues);
 .note-rendered {
   font-size: 13px;
   line-height: 1.8;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   font-family: "Helvetica Neue", sans-serif;
 }
 .note-rendered :deep(h1) {
@@ -1703,9 +2188,9 @@ onMounted(fetchVenues);
   border-left: 3px solid #41c9a0;
   padding: 6px 12px;
   margin: 10px 0;
-  background: rgba(65,201,160,0.08);
+  background: rgba(65, 201, 160, 0.08);
   border-radius: 0 6px 6px 0;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255, 255, 255, 0.8);
 }
 .note-rendered :deep(table) {
   width: 100%;
@@ -1714,19 +2199,19 @@ onMounted(fetchVenues);
   font-size: 12px;
 }
 .note-rendered :deep(th) {
-  background: rgba(65,201,160,0.2);
+  background: rgba(65, 201, 160, 0.2);
   color: #41c9a0;
   padding: 6px 10px;
   text-align: left;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .note-rendered :deep(td) {
   padding: 6px 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
 }
 .note-rendered :deep(tr:nth-child(even) td) {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
 }
 .note-rendered :deep(ul),
 .note-rendered :deep(ol) {
@@ -1741,7 +2226,7 @@ onMounted(fetchVenues);
 }
 .note-rendered :deep(hr) {
   border: none;
-  border-top: 1px solid rgba(255,255,255,0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   margin: 14px 0;
 }
 .note-rendered :deep(strong) {
@@ -1759,19 +2244,21 @@ onMounted(fetchVenues);
   justify-content: center;
   gap: 16px;
   padding: 40px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
 }
 .note-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid rgba(65,201,160,0.3);
+  border: 3px solid rgba(65, 201, 160, 0.3);
   border-top-color: #41c9a0;
   border-radius: 50%;
   animation: note-spin 0.8s linear infinite;
 }
 @keyframes note-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .note-error {
   flex: 1;

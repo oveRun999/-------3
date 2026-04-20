@@ -12,9 +12,11 @@ export default defineEventHandler((event) => {
   const isNum = /^\d+$/.test(q)
 
   // 出走表から選手の最新情報 + 出走回数を取得（プロフィールをLEFT JOIN）
+  // GROUP BY を選手番号のみにすることで改名した選手が重複表示されるのを防ぐ
   const racers = db.prepare(`
     SELECT
-      r.選手番号, r.選手名,
+      r.選手番号,
+      MAX(r.選手名)     AS 選手名,
       MAX(r.年齢)       AS 年齢,
       MAX(r.体重)       AS 体重,
       MAX(r.級別番号)   AS 級別番号,
@@ -30,7 +32,7 @@ export default defineEventHandler((event) => {
     FROM 出走表 r
     LEFT JOIN 選手プロフィール p ON p.選手番号 = r.選手番号
     WHERE ${isNum ? 'r.選手番号 = ?' : 'r.選手名 LIKE ?'}
-    GROUP BY r.選手番号, r.選手名
+    GROUP BY r.選手番号
     ORDER BY 最終出走日 DESC
     LIMIT 30
   `).all(isNum ? Number(q) : `%${q}%`) as any[]
