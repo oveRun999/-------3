@@ -188,6 +188,20 @@ export default defineEventHandler((event) => {
   const pcMap: Record<number, any> = {};
   for (const pc of allPlayerCourseStats) pcMap[pc.選手番号] = pc;
 
+  // ===== 予想スナップショット（全レース一括取得） =====
+  const allSnapshots = db
+    .prepare(
+      `SELECT 会場番号, レース番号, 本命, 対抗, 穴, 大穴, boats_json, upset_json
+       FROM 予想スナップショット
+       WHERE 日付 = ? ${stadiumCond}`,
+    )
+    .all(date, ...stadiumParams) as any[];
+
+  const snapshotMap: Record<string, any> = {};
+  for (const s of allSnapshots) {
+    snapshotMap[`${s.会場番号}-${s.レース番号}`] = s;
+  }
+
   // ===== レース番号ごとにグループ化（会場別含む） =====
   const raceKeys = [
     ...new Set(allBoats.map((b: any) => `${b.会場番号}-${b.レース番号}`)),
@@ -251,139 +265,96 @@ export default defineEventHandler((event) => {
           金額: p.金額,
         }));
 
-      // 展示タイムの最速
-      const times = Object.values(prevMap)
-        .filter((p: any) => p.展示タイム != null && p.展示タイム > 0)
-        .map((p: any) => p.展示タイム as number);
-      const fastestTime = times.length > 0 ? Math.min(...times) : null;
-
-      // 会場補正・風速補正
-      const venue1Rate = VENUE_COURSE1_RATE[venueNo] ?? COURSE_WIN_RATE[1];
-      const course1Scale = (1 - venue1Rate) / (1 - COURSE_WIN_RATE[1]);
-      const windSpeed: number = weather.風速 ?? 0;
-      const windBonus = (courseNo: number): number => {
-        if (windSpeed < 3) return 0;
-        if (courseNo === 1) return -Math.min(windSpeed * 0.008, 0.06);
-        if (courseNo >= 4) return Math.min(windSpeed * 0.004, 0.03);
-        return 0;
-      };
-
-      // スコア算出
-      const rd = (v: number) => Math.round(v * 100) / 100;
-      const scored = boats.map((b: any) => {
-        const pre = prevMap[b.艇番] || {};
-        const res = resMap[b.艇番] || {};
-        const courseNo = pre.コース番号 ?? res.結果コース番号 ?? b.艇番;
-
-        // 会場別勝率 + 風速補正
-        const venueAdjRate =
-          courseNo === 1
-            ? venue1Rate
-            : (COURSE_WIN_RATE[courseNo] ?? 0.019) * course1Scale;
-        const courseScore = (venueAdjRate + windBonus(courseNo)) * W.course;
-        const gradeScore = (GRADE_WIN_RATE[b.級別番号 ?? 3] ?? 0.1) * W.grade;
-        const natScore = ((b["全国1着率"] ?? 0) / 100) * W.nat_win;
-        const localScore = ((b["当地1着率"] ?? 0) / 100) * W.local_win;
-        const motorScore = ((b.モーター2着率 ?? 0) / 100) * W.motor;
-        const boatScore = ((b.ボート2着率 ?? 0) / 100) * W.boat;
-
-        // CSV由来: コース別STと適性
-        const pc = pcMap[b.選手番号];
-        const pcEntries: number = pc ? (pc[`c${courseNo}進入`] ?? 0) : 0;
-        const pcCourseST: number | null =
-          pc && pcEntries >= 5 ? pc[`c${courseNo}ST`] : null;
-        const avgST = pcCourseST ?? b.平均ST ?? 0.18;
-        const stScore = (0.2 - avgST) * W.st;
-
-        let courseAptScore = 0;
-        if (pc && pcEntries >= 10) {
-          const pcPlaceRate: number = (pc[`c${courseNo}複勝率`] ?? 0) / 100;
-          courseAptScore = (pcPlaceRate - 0.33) * W.course_apt;
-        }
-        const fPenalty = (b.F数 ?? 0) * W.f_penalty;
-        const tilt = pre.チルト調整 ?? 0;
-        const tiltBonus = courseNo >= 4 && tilt >= 1.0 ? 1.5 : 0;
-
-        let timeScore = 0;
-        if (
-          pre.展示タイム != null &&
-          pre.展示タイム > 0 &&
-          fastestTime != null
-        ) {
-          timeScore = (fastestTime - pre.展示タイム) * W.exhibit_time;
-        }
-
-        let sessionScore = 0;
-        const sess = sessionMap[b.選手番号];
-        if (sess && sess.length >= 1) {
-          const avg =
-            sess.reduce((a: number, c: number) => a + c, 0) / sess.length;
-          const conf = Math.min(sess.length / 3, 1);
-          sessionScore = (3.5 - avg) * W.session * conf;
-        }
-
-        const score =
-          courseScore +
-          gradeScore +
-          natScore +
-          localScore +
-          motorScore +
-          boatScore +
-          stScore +
-          timeScore +
-          tiltBonus -
-          fPenalty +
-          sessionScore +
-          courseAptScore;
-
-        return {
-          艇番: b.艇番,
-          選手名: b.選手名,
-          級別: GRADE_LABEL[b.級別番号] || String(b.級別番号),
-          コース番号: courseNo,
-          展示タイム: pre.展示タイム ?? null,
-          平均ST: b.平均ST,
-          score: rd(score),
-          実際の着順: res.着順 ?? null,
-        };
-      });
-
-      // スコア降順にソートして予想順位を付ける
-      const sortedByScore = [...scored].sort((a, b) => b.score - a.score);
-      sortedByScore.forEach((b, i) => {
-        b.予想順位 = i + 1;
-      });
-
-      // 的中判定
-      const top3Predicted = new Set(
-        sortedByScore.slice(0, 3).map((b) => b.艇番),
-      );
-      const top3Actual = new Set(
-        scored
-          .filter((b) => b.実際の着順 != null && b.実際の着順 <= 3)
-          .map((b) => b.艇番),
-      );
-      const top3Match = [...top3Predicted].filter((x) =>
-        top3Actual.has(x),
-      ).length;
-
-      const win1st = sortedByScore[0]?.実際の着順 === 1; // 1着的中
-      const hasPreview = Object.keys(prevMap).length > 0; // 直前情報あり
-
-      const predictedTrifecta = sortedByScore
-        .slice(0, 3)
-        .map((b: any) => b.艇番)
-        .join("-");
-      const actualTrifecta = actualBoats
-        .slice(0, 3)
-        .map((b: any) => b.艇番)
-        .join("-");
-      const trifectaHit =
-        predictedTrifecta &&
-        actualTrifecta &&
-        predictedTrifecta === actualTrifecta;
-
+      const hasPreview = Object.keys(prevMap).length > 0;
       const ri = raceInfoMap[raceKey] || {};
+
+      // ===== スナップショットがあればそちらを優先 =====
+      const snap = snapshotMap[raceKey];
+      let scored: any[];
+
+      if (snap) {
+        // スナップショットの boats_json に実際の着順をマージ
+        const snapBoats: any[] = JSON.parse(snap.boats_json);
+        scored = snapBoats.map((b: any) => ({
+          ...b,
+          実際の着順: resMap[b.艇番]?.着順 ?? null,
+        }));
+      } else {
+        // スナップショットなし → 従来の再計算（フォールバック）
+        const times = Object.values(prevMap)
+          .filter((p: any) => p.展示タイム != null && p.展示タイム > 0)
+          .map((p: any) => p.展示タイム as number);
+        const fastestTime = times.length > 0 ? Math.min(...times) : null;
+
+        const venue1Rate = VENUE_COURSE1_RATE[venueNo] ?? COURSE_WIN_RATE[1];
+        const course1Scale = (1 - venue1Rate) / (1 - COURSE_WIN_RATE[1]);
+        const windSpeed: number = weather.風速 ?? 0;
+        const windBonus = (courseNo: number): number => {
+          if (windSpeed < 3) return 0;
+          if (courseNo === 1) return -Math.min(windSpeed * 0.008, 0.06);
+          if (courseNo >= 4) return Math.min(windSpeed * 0.004, 0.03);
+          return 0;
+        };
+        const rd = (v: number) => Math.round(v * 100) / 100;
+
+        scored = boats.map((b: any) => {
+          const pre = prevMap[b.艇番] || {};
+          const res = resMap[b.艇番] || {};
+          const courseNo = pre.コース番号 ?? res.結果コース番号 ?? b.艇番;
+          const venueAdjRate = courseNo === 1 ? venue1Rate : (COURSE_WIN_RATE[courseNo] ?? 0.019) * course1Scale;
+          const courseScore = (venueAdjRate + windBonus(courseNo)) * W.course;
+          const gradeScore = (GRADE_WIN_RATE[b.級別番号 ?? 3] ?? 0.1) * W.grade;
+          const natScore = ((b["全国1着率"] ?? 0) / 100) * W.nat_win;
+          const localScore = ((b["当地1着率"] ?? 0) / 100) * W.local_win;
+          const motorScore = ((b.モーター2着率 ?? 0) / 100) * W.motor;
+          const boatScore = ((b.ボート2着率 ?? 0) / 100) * W.boat;
+          const pc = pcMap[b.選手番号];
+          const pcEntries: number = pc ? (pc[`c${courseNo}進入`] ?? 0) : 0;
+          const pcCourseST: number | null = pc && pcEntries >= 5 ? pc[`c${courseNo}ST`] : null;
+          const avgST = pcCourseST ?? b.平均ST ?? 0.18;
+          const stScore = (0.2 - avgST) * W.st;
+          let courseAptScore = 0;
+          if (pc && pcEntries >= 10) {
+            courseAptScore = ((pc[`c${courseNo}複勝率`] ?? 0) / 100 - 0.33) * W.course_apt;
+          }
+          const fPenalty = (b.F数 ?? 0) * W.f_penalty;
+          const tiltBonus = (pre.チルト調整 ?? 0) >= 1.0 && courseNo >= 4 ? 1.5 : 0;
+          let timeScore = 0;
+          if (pre.展示タイム != null && pre.展示タイム > 0 && fastestTime != null) {
+            timeScore = (fastestTime - pre.展示タイム) * W.exhibit_time;
+          }
+          let sessionScore = 0;
+          const sess = sessionMap[b.選手番号];
+          if (sess && sess.length >= 1) {
+            const avg = sess.reduce((a: number, c: number) => a + c, 0) / sess.length;
+            sessionScore = (3.5 - avg) * W.session * Math.min(sess.length / 3, 1);
+          }
+          const score = courseScore + gradeScore + natScore + localScore + motorScore + boatScore + stScore + timeScore + tiltBonus - fPenalty + sessionScore + courseAptScore;
+          return {
+            艇番: b.艇番, 選手名: b.選手名,
+            級別: GRADE_LABEL[b.級別番号] || String(b.級別番号),
+            コース番号: courseNo, 展示タイム: pre.展示タイム ?? null,
+            平均ST: b.平均ST, score: rd(score),
+            実際の着順: resMap[b.艇番]?.着順 ?? null,
+            scoreDetail: { 今節点: rd(sessionScore) },
+          };
+        });
+        const sortedFallback = [...scored].sort((a, b) => b.score - a.score);
+        sortedFallback.forEach((b, i) => { b.予想順位 = i + 1; });
+      }
+
+      // 的中判定（スナップショット・再計算共通）
+      const sortedByScore = [...scored].sort((a, b) => a.予想順位 - b.予想順位);
+      const top3Predicted = new Set(sortedByScore.slice(0, 3).map((b) => b.艇番));
+      const top3Actual = new Set(
+        scored.filter((b) => b.実際の着順 != null && b.実際の着順 <= 3).map((b) => b.艇番),
+      );
+      const top3Match = [...top3Predicted].filter((x) => top3Actual.has(x)).length;
+      const win1st = sortedByScore[0]?.実際の着順 === 1;
+      const predictedTrifecta = sortedByScore.slice(0, 3).map((b: any) => b.艇番).join("-");
+      const actualTrifecta = actualBoats.slice(0, 3).map((b: any) => b.艇番).join("-");
+      const trifectaHit = predictedTrifecta && actualTrifecta && predictedTrifecta === actualTrifecta;
+
       return {
         会場番号: venueNo,
         会場名: venueName,
@@ -393,13 +364,17 @@ export default defineEventHandler((event) => {
         レース名: ri.レース名 ?? null,
         サブタイトル: ri.サブタイトル ?? null,
         hasPreview,
+        hasSnapshot: !!snap,
         win1st,
         top3Match,
         top3Perfect: top3Match === 3,
         trifectaHit,
         predictedTrifecta,
         actualTrifecta,
-        boats: scored.sort((a, b) => a.艇番 - b.艇番), // 艇番順で返す
+        // スナップショットの買い目があればそちらを使う（history.vueのtaikouSortedForより優先）
+        snapshotBets: snap ? { 本命: snap.本命, 対抗: snap.対抗, 穴: snap.穴, 大穴: snap.大穴 } : null,
+        upsetAnalysis: snap?.upset_json ? JSON.parse(snap.upset_json) : null,
+        boats: scored.sort((a, b) => a.艇番 - b.艇番),
         weather,
         actualBoats,
         payouts,

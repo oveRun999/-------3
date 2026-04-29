@@ -142,6 +142,19 @@ body {
   align-items: center;
   margin-bottom: 16px;
 }
+.filter-bar-note-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.filter-bar-note-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .filter-bar label {
   font-size: 12px;
   color: var(--color-muted);

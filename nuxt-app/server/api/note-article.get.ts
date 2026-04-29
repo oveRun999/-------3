@@ -7,7 +7,7 @@ export default defineEventHandler((event) => {
   const stadiumNo = Number(query.stadium)
   const raceNo    = Number(query.raceNo)
 
-  if (!date || !stadiumNo || !raceNo) {
+  if (!date || !stadiumNo || raceNo == null || isNaN(raceNo)) {
     throw createError({ statusCode: 400, message: 'date / stadium / raceNo は必須です' })
   }
 

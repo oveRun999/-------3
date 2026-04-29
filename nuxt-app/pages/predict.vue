@@ -28,6 +28,39 @@
           <option v-for="n in 12" :key="n" :value="n">{{ n }}R</option>
         </select>
       </div>
+
+      <!-- Note操作セクション（右寄せ） -->
+      <div class="filter-bar-note-section">
+        <div>
+          <label>予想会場</label>
+          <select v-model="noteStadium">
+            <option v-for="v in venues" :key="v.会場番号" :value="v.会場番号">
+              {{ v.会場番号 }}. {{ v.会場名 }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-bar-note-buttons">
+          <button
+            class="note-btn"
+            :disabled="noteAllGenerating"
+            @click="doGenerateNoteAll"
+          >
+            {{
+              noteAllGenerating ? "⏳ 生成中…" : "📝 全レース予想をNoteに記載"
+            }}
+          </button>
+          <button
+            v-if="hasSavedAllNote && !noteAllGenerating"
+            class="note-view-btn"
+            @click="
+              isAllNote = true;
+              noteModalOpen = true;
+            "
+          >
+            📄 記載内容を確認
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="pending" class="loading">予想計算中...</div>
@@ -65,7 +98,13 @@
           </span>
         </div>
         <div v-if="raceInfo.レース名" class="race-name-bar">
-          <span class="race-title">{{ raceInfo.レース名 }}</span>
+          <a
+            class="race-title race-title-link"
+            :href="`https://boatrace.jp/owpc/pc/race/beforeinfo?hd=${selectedDate.replace(/-/g, '')}&jcd=${String(selectedStadium).padStart(2, '0')}&rno=${selectedRace}`"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ raceInfo.レース名 }} 🔗</a
+          >
           <span v-if="raceInfo.サブタイトル" class="race-subtitle">{{
             raceInfo.サブタイトル
           }}</span>
@@ -89,15 +128,23 @@
         <div class="bet-section">
           <div class="bet-title">💡 注目買い目</div>
           <div class="bet-list">
-            <div class="bet-item" :class="{ 'bet-hit': raceResult && hitTansho }">
-              <span class="bet-label">単勝</span>
+            <div
+              class="bet-item"
+              :class="{ 'bet-hit': raceResult && hitTansho }"
+            >
+              <span class="bet-item-label">単勝</span>
               <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
                 sortedBoats[0]?.艇番
               }}</span>
-              <span v-if="raceResult && hitTansho" class="hit-badge">🎯 的中</span>
+              <span v-if="raceResult && hitTansho" class="hit-badge"
+                >🎯 的中</span
+              >
             </div>
-            <div class="bet-item" :class="{ 'bet-hit': raceResult && hit2Rentan }">
-              <span class="bet-label">2連単</span>
+            <div
+              class="bet-item"
+              :class="{ 'bet-hit': raceResult && hit2Rentan }"
+            >
+              <span class="bet-item-label">2連単</span>
               <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
                 sortedBoats[0]?.艇番
               }}</span>
@@ -105,10 +152,15 @@
               <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{
                 sortedBoats[1]?.艇番
               }}</span>
-              <span v-if="raceResult && hit2Rentan" class="hit-badge">🎯 的中</span>
+              <span v-if="raceResult && hit2Rentan" class="hit-badge"
+                >🎯 的中</span
+              >
             </div>
-            <div class="bet-item" :class="{ 'bet-hit': raceResult && hit3RentanHonmei }">
-              <span class="bet-label">3連単（本命）</span>
+            <div
+              class="bet-item"
+              :class="{ 'bet-hit': raceResult && hit3RentanHonmei }"
+            >
+              <span class="bet-item-label">3連単（本命）</span>
               <span :class="`boat-badge boat-${sortedBoats[0]?.艇番}`">{{
                 sortedBoats[0]?.艇番
               }}</span>
@@ -120,25 +172,36 @@
               <span :class="`boat-badge boat-${sortedBoats[2]?.艇番}`">{{
                 sortedBoats[2]?.艇番
               }}</span>
-              <span v-if="raceResult && hit3RentanHonmei" class="hit-badge">🎯 的中</span>
+              <span v-if="raceResult && hit3RentanHonmei" class="hit-badge"
+                >🎯 的中</span
+              >
             </div>
-            <div class="bet-item" :class="{ 'bet-hit': raceResult && hit3RentanTaikou }">
-              <span class="bet-label">3連単（対抗）</span>
-              <span :class="`boat-badge boat-${taikouSortedBoats[0]?.艇番}`">{{
-                taikouSortedBoats[0]?.艇番
+            <div
+              class="bet-item"
+              :class="{ 'bet-hit': raceResult && hit3RentanTaikou }"
+            >
+              <span class="bet-item-label">3連単（対抗）</span>
+              <span :class="`boat-badge boat-${taikouComboBoats[0]?.艇番}`">{{
+                taikouComboBoats[0]?.艇番
               }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${taikouSortedBoats[1]?.艇番}`">{{
-                taikouSortedBoats[1]?.艇番
+              <span :class="`boat-badge boat-${taikouComboBoats[1]?.艇番}`">{{
+                taikouComboBoats[1]?.艇番
               }}</span>
               <span class="bet-arrow">→</span>
-              <span :class="`boat-badge boat-${taikouSortedBoats[2]?.艇番}`">{{
-                taikouSortedBoats[2]?.艇番
+              <span :class="`boat-badge boat-${taikouComboBoats[2]?.艇番}`">{{
+                taikouComboBoats[2]?.艇番
               }}</span>
-              <span v-if="raceResult && hit3RentanTaikou" class="hit-badge">🎯 的中</span>
+              <span v-if="raceResult && hit3RentanTaikou" class="hit-badge"
+                >🎯 的中</span
+              >
             </div>
-            <div v-if="sortedBoats.length >= 4" class="bet-item" :class="{ 'bet-hit': raceResult && hit3RentanAna }">
-              <span class="bet-label">3連単（穴）</span>
+            <div
+              v-if="sortedBoats.length >= 4"
+              class="bet-item"
+              :class="{ 'bet-hit': raceResult && hit3RentanAna }"
+            >
+              <span class="bet-item-label">3連単（穴）</span>
               <span :class="`boat-badge boat-${sortedBoats[3]?.艇番}`">{{
                 sortedBoats[3]?.艇番
               }}</span>
@@ -150,14 +213,16 @@
               <span :class="`boat-badge boat-${sortedBoats[1]?.艇番}`">{{
                 sortedBoats[1]?.艇番
               }}</span>
-              <span v-if="raceResult && hit3RentanAna" class="hit-badge">🎯 的中</span>
+              <span v-if="raceResult && hit3RentanAna" class="hit-badge"
+                >🎯 的中</span
+              >
             </div>
             <div
               v-if="upsetPickBoats.length === 3 && !isSameAsAna"
               class="bet-item bet-item-oozana"
               :class="{ 'bet-hit': raceResult && hit3RentanOozana }"
             >
-              <span class="bet-label bet-label-oozana">💥 3連単（大穴）</span>
+              <span class="bet-item-label bet-item-label-oozana">💥 3連単（大穴）</span>
               <span :class="`boat-badge boat-${upsetPickBoats[0]}`">{{
                 upsetPickBoats[0]
               }}</span>
@@ -169,7 +234,9 @@
               <span :class="`boat-badge boat-${upsetPickBoats[2]}`">{{
                 upsetPickBoats[2]
               }}</span>
-              <span v-if="raceResult && hit3RentanOozana" class="hit-badge">🎯 的中</span>
+              <span v-if="raceResult && hit3RentanOozana" class="hit-badge"
+                >🎯 的中</span
+              >
             </div>
           </div>
           <!-- 信頼度コメント -->
@@ -196,6 +263,12 @@
           <!-- ツイート＆Noteボタン -->
           <div class="tweet-section">
             <button class="tweet-btn" @click="doTweet">𝕏 ポストする</button>
+            <span
+              class="tweet-preview-toggle"
+              @click="tweetPreviewOpen = !tweetPreviewOpen"
+            >
+              {{ tweetPreviewOpen ? "▲ 内容を隠す" : "▼ 投稿内容を確認" }}
+            </span>
             <button
               class="note-btn"
               :disabled="noteGenerating"
@@ -209,14 +282,10 @@
               @click="openSavedNote"
             >
               📄 記載内容を確認
-              <span v-if="savedNoteAt" class="note-saved-at">{{ savedNoteAt }}</span>
+              <span v-if="savedNoteAt" class="note-saved-at">{{
+                savedNoteAt
+              }}</span>
             </button>
-            <span
-              class="tweet-preview-toggle"
-              @click="tweetPreviewOpen = !tweetPreviewOpen"
-            >
-              {{ tweetPreviewOpen ? "▲ 内容を隠す" : "▼ 投稿内容を確認" }}
-            </span>
           </div>
           <div v-if="tweetPreviewOpen" class="tweet-preview">
             <div
@@ -261,8 +330,15 @@
               <span class="result-course">{{ b.コース番号 }}C</span>
               <span
                 v-if="b.スタートST != null"
-                :class="b.スタートST < 0 ? 'st-flying' : b.スタートST <= 0.1 ? 'st-fast' : 'result-st'"
-              >ST {{ b.スタートST.toFixed(2) }}</span>
+                :class="
+                  b.スタートST < 0
+                    ? 'st-flying'
+                    : b.スタートST <= 0.1
+                      ? 'st-fast'
+                      : 'result-st'
+                "
+                >ST {{ b.スタートST.toFixed(2) }}</span
+              >
             </li>
           </ol>
           <!-- 配当 -->
@@ -341,7 +417,7 @@
             >※ 複勝率 =
             2・3着以内率。棒グラフは過去5年加重平均、折れ線は各年の担当コース成績</span
           >
-          <button class="copy-btn" @click="copyChartData">
+          <button class="copy-btn --course" @click="copyChartData">
             {{ copiedChart ? "✅" : "📋" }}
           </button>
         </div>
@@ -582,17 +658,30 @@
         <div class="card-header">
           <span>艇別スコア詳細</span>
           <span class="header-sub">
-            コース(32) + 級別(20) + 展示T(20) + 全国率(14) + ST(30) + 当地率(6)
+            独自のスコアを算出し、予想順位をつけています。
           </span>
-          <button class="copy-btn" @click="copyTableData">
-            {{ copiedTable ? "✅" : "📋" }}
-          </button>
+          <div class="table-header-actions">
+            <button
+              class="fetch-preview-btn"
+              :disabled="fetchingPreview"
+              @click="autoFetchPreview"
+            >
+              {{ fetchingPreview ? "⏳ 取得中…" : "🌐 直前情報を取得" }}
+            </button>
+            <span v-if="fetchPreviewMsg" class="fetch-preview-msg">{{
+              fetchPreviewMsg
+            }}</span>
+            <button class="copy-btn" @click="copyTableData">
+              {{ copiedTable ? "✅" : "📋" }}
+            </button>
+          </div>
         </div>
+
         <div class="table-scroll">
           <table class="data-table">
             <thead>
               <tr>
-                <th>順位</th>
+                <th>予想順位</th>
                 <th>艇</th>
                 <th>選手名</th>
                 <th>級別</th>
@@ -607,20 +696,21 @@
                 <th>チルト</th>
                 <th>今節</th>
                 <th>F</th>
-                <th>単勝</th>
-                <th>複勝</th>
                 <th style="min-width: 80px">スコア</th>
                 <th style="min-width: 200px">スコア内訳</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="b in sortedBoats"
+                v-for="b in courseOrderBoats"
                 :key="b.艇番"
                 :class="`rank-row rank-${b.rank}`"
               >
                 <td>
-                  <span class="rank-badge">
+                  <span
+                    class="rank-badge"
+                    :class="b.rank <= 3 ? 'rank-mark' : ''"
+                  >
                     {{
                       b.rank === 1
                         ? "🥇"
@@ -664,7 +754,22 @@
                   {{ b.平均ST != null ? b.平均ST.toFixed(2) : "-" }}
                 </td>
                 <td :class="b.展示タイム === fastestTime ? 'fastest' : ''">
-                  {{ b.展示タイム != null ? b.展示タイム.toFixed(2) : "-" }}
+                  <template v-if="b.展示タイム != null">
+                    {{ b.展示タイム.toFixed(2) }}
+                  </template>
+                  <template v-else>
+                    <input
+                      class="manual-input"
+                      type="text"
+                      inputmode="decimal"
+                      placeholder="例: 6.78"
+                      :tabindex="courseOrderBoats.indexOf(b) * 2 + 1"
+                      :value="manualInputs[b.艇番]?.展示タイム ?? ''"
+                      @focus="initManualInput(b.艇番)"
+                      @keydown.tab="onManualInputTab"
+                      @input="(e) => autoFormatManualInput(e, '展示タイム', b.艇番)"
+                    />
+                  </template>
                 </td>
                 <td
                   :class="
@@ -675,7 +780,22 @@
                         : ''
                   "
                 >
-                  {{ b.スタートST != null ? b.スタートST.toFixed(2) : "-" }}
+                  <template v-if="b.スタートST != null">
+                    {{ b.スタートST.toFixed(2) }}
+                  </template>
+                  <template v-else>
+                    <input
+                      class="manual-input"
+                      type="text"
+                      inputmode="decimal"
+                      placeholder="例: 0.15"
+                      :tabindex="courseOrderBoats.indexOf(b) * 2 + 2"
+                      :value="manualInputs[b.艇番]?.スタートST ?? ''"
+                      @focus="initManualInput(b.艇番)"
+                      @keydown.tab="onManualInputTab"
+                      @input="(e) => autoFormatManualInput(e, 'スタートST', b.艇番)"
+                    />
+                  </template>
                 </td>
                 <td>{{ b.体重 != null ? b.体重 + "kg" : "-" }}</td>
                 <td
@@ -700,18 +820,6 @@
                   <template v-else>-</template>
                 </td>
                 <td :class="b.F数 > 0 ? 'foul' : ''">{{ b.F数 ?? 0 }}</td>
-                <td>
-                  <span v-if="b.単勝払い戻し != null" class="odds-win">
-                    ¥{{ b.単勝払い戻し.toLocaleString() }}
-                  </span>
-                  <span v-else class="odds-none">-</span>
-                </td>
-                <td>
-                  <span v-if="b.複勝払い戻し != null" class="odds-place">
-                    ¥{{ b.複勝払い戻し.toLocaleString() }}
-                  </span>
-                  <span v-else class="odds-none">-</span>
-                </td>
                 <td>
                   <span class="score-value" :class="`score-rank-${b.rank}`">
                     {{ b.score.toFixed(1) }}
@@ -765,11 +873,34 @@
             </tbody>
           </table>
         </div>
+        <!-- 手動入力がある場合のみ保存ボタンを表示 -->
+        <div
+          v-if="
+            Object.values(manualInputs).some(
+              (m) => m.展示タイム !== '' || m.スタートST !== '',
+            )
+          "
+          class="manual-save-bar"
+        >
+          <span class="manual-save-note"
+            >📝 未取得の展示T・展示STを入力しました</span
+          >
+          <button
+            class="manual-save-btn"
+            :disabled="manualSaving"
+            @click="saveManualAndReload"
+          >
+            {{ manualSaving ? "⏳ 保存中…" : "💾 保存して再計算" }}
+          </button>
+        </div>
       </div>
 
       <!-- 予想の見方ガイド -->
       <div class="guide-card">
         <div class="guide-title">📖 予想の見方</div>
+        <span class="guide-title-sub">
+          コース(32) + 級別(20) + 展示T(20) + 全国率(14) + ST(30) + 当地率(6)
+        </span>
         <div class="guide-body">
           <div class="guide-item">
             <span class="guide-tag tag-c">C</span>
@@ -814,6 +945,12 @@
       <div class="note-modal">
         <div class="note-modal-header">
           <span class="note-modal-title">📝 Claude が書いた Note 記事</span>
+          <span
+            v-if="allNoteCostJpy !== null && isAllNote"
+            class="note-cost-badge"
+          >
+            💰 約{{ allNoteCostJpy }}円
+          </span>
           <div class="note-modal-actions">
             <button
               class="note-copy-btn"
@@ -822,23 +959,88 @@
             >
               {{ noteCopied ? "✅ コピー済み！" : "📋 全文コピー" }}
             </button>
-            <button class="note-close-btn" @click="noteModalOpen = false">
+            <button
+              class="note-img-copy-btn"
+              @click="copyNoteBodyAsImage"
+              :disabled="!generatedMarkdown && allNoteCards.length === 0"
+            >
+              {{ noteImageCopied ? "✅ 画像コピー済み！" : "🖼 画像コピー" }}
+            </button>
+            <button
+              class="note-close-btn"
+              @click="
+                noteModalOpen = false;
+                isAllNote = false;
+              "
+            >
               ✕
             </button>
           </div>
         </div>
-        <div class="note-modal-hint">
+        <div v-if="!isAllNote" class="note-modal-hint">
           ↑ コピーして Note のエディタにペースト。📸
           の箇所にスクショを挿入してください。
         </div>
         <!-- 生成中 -->
-        <div v-if="noteGenerating" class="note-generating">
+        <div v-if="noteGenerating || noteAllGenerating" class="note-generating">
           <div class="note-spinner"></div>
           <p>Claudeが記事を考えています…</p>
         </div>
         <!-- エラー -->
         <div v-else-if="noteError" class="note-error">⚠️ {{ noteError }}</div>
-        <!-- 生成済み -->
+        <!-- 全レースまとめカード表示 -->
+        <div
+          v-else-if="isAllNote && allNoteCards.length > 0"
+          class="note-modal-body"
+        >
+          <div class="all-note-header">
+            <p class="all-note-title">## 【{{ allNoteDateLabel }}】競艇予想・{{ allNoteVenueName }}レースまとめ</p>
+            <p class="all-note-lead">{{ allNoteLead }}</p>
+            <p class="all-note-criteria">★評価の基準：★1（波乱含み）、★3（標準）、★5（鉄板・勝負レース）</p>
+          </div>
+          <div class="race-card-grid">
+            <div
+              v-for="card in allNoteCards"
+              :key="card.raceNo"
+              class="race-card"
+              :class="card.hitLabel ? 'race-card--hit' : ''"
+            >
+              <div v-if="card.hitLabel" class="race-card-hit-badge">{{ card.hitLabel }}</div>
+              <div class="race-card-header">
+                <span class="race-card-num">
+                  ●{{ card.raceNo }}R
+                  <span v-if="card.gradeName" class="race-card-grade">{{ card.gradeName }}</span>
+                </span>
+                <span v-if="card.raceName" class="race-card-name">{{ card.raceName }}</span>
+              </div>
+              <div v-if="card.result" class="race-card-result">{{ card.result }}</div>
+              <ul class="race-card-body">
+                <li>
+                  <span class="bet-label">本命 (◎)</span
+                  ><span class="bet-val">{{ card.honmei }}</span>
+                </li>
+                <li>
+                  <span class="bet-label">対抗 (○)</span
+                  ><span class="bet-val">{{ card.taikou }}</span>
+                </li>
+                <li v-if="card.ana">
+                  <span class="bet-label">穴　 (▲)</span
+                  ><span class="bet-val">{{ card.ana }}</span>
+                </li>
+                <li v-if="card.oozana">
+                  <span class="bet-label">大穴 (×)</span
+                  ><span class="bet-val">{{ card.oozana }}</span>
+                </li>
+                <li>
+                  <span class="bet-label">自信度</span
+                  ><span class="bet-val stars">{{ card.stars }}</span>
+                </li>
+              </ul>
+              <p class="race-card-comment">{{ card.comment }}</p>
+            </div>
+          </div>
+        </div>
+        <!-- 単レース生成済み -->
         <div v-else class="note-modal-body">
           <div class="note-rendered" v-html="renderedMarkdown"></div>
         </div>
@@ -855,10 +1057,129 @@ const { selectedDate, dayOfWeek, isWeekend, isSunday } = useSharedDate();
 const { selectedStadium, selectedRace } = useSharedVenue();
 const route = useRoute();
 const venues = ref<{ 会場番号: number; 会場名: string }[]>([]);
+const noteStadium = ref<number>(selectedStadium.value);
 const boats = ref<any[]>([]);
 const weather = ref<any>({});
 const raceInfo = ref<any>({});
 const raceResult = ref<{ boats: any[]; payouts: any[] } | null>(null);
+
+// ---- 展示T / 展示ST 手動入力 ----
+// { 艇番: { 展示タイム: string, スタートST: string } }
+const manualInputs = ref<
+  Record<number, { 展示タイム: string; スタートST: string }>
+>({});
+const manualSaving = ref(false);
+
+// boatsが変わったら入力フィールドをリセット
+watch(boats, () => {
+  manualInputs.value = {};
+});
+
+function initManualInput(艇番: number) {
+  if (!manualInputs.value[艇番]) {
+    manualInputs.value[艇番] = { 展示タイム: "", スタートST: "" };
+  }
+}
+
+// 展示T・展示ST 入力欄間のTab循環
+function onManualInputTab(e: KeyboardEvent) {
+  e.preventDefault();
+  const inputs = Array.from(
+    document.querySelectorAll<HTMLElement>('.manual-input[tabindex]')
+  ).sort((a, b) => Number(a.getAttribute('tabindex')) - Number(b.getAttribute('tabindex')));
+  if (inputs.length === 0) return;
+  const current = document.activeElement as HTMLElement;
+  const idx = inputs.indexOf(current);
+  const next = inputs[(idx + 1) % inputs.length];
+  next?.focus();
+}
+
+// 3桁入力で自動ピリオド挿入（例: "678" → "6.78", "015" → "0.15", "-001" → "-0.01"）
+function autoFormatManualInput(
+  e: Event,
+  field: '展示タイム' | 'スタートST',
+  艇番: number
+) {
+  const input = e.target as HTMLInputElement;
+  let val = input.value;
+  const isNegative = val.startsWith('-');
+  const digits = val.replace(/[^0-9]/g, '');
+  if (digits.length === 3) {
+    const formatted = (isNegative ? '-' : '') + digits[0] + '.' + digits[1] + digits[2];
+    input.value = formatted;
+    val = formatted;
+  }
+  initManualInput(艇番);
+  manualInputs.value[艇番][field] = val;
+}
+
+// 直前情報をAPIから自動取得してDBに保存→再計算
+const fetchingPreview = ref(false);
+const fetchPreviewMsg = ref("");
+
+async function autoFetchPreview() {
+  fetchingPreview.value = true;
+  fetchPreviewMsg.value = "";
+  try {
+    const res = await $fetch<{
+      found: boolean;
+      message?: string;
+      count?: number;
+    }>("/api/fetch-preview", {
+      method: "POST",
+      body: {
+        date: selectedDate.value,
+        stadium: selectedStadium.value,
+        raceNo: selectedRace.value,
+      },
+    });
+    if (!res.found) {
+      fetchPreviewMsg.value = res.message ?? "データなし";
+    } else {
+      fetchPreviewMsg.value = `✅ ${res.count}艇分の直前情報を取得しました`;
+      manualInputs.value = {};
+      await fetchPredict();
+      setTimeout(() => (fetchPreviewMsg.value = ""), 3000);
+    }
+  } catch (e: any) {
+    fetchPreviewMsg.value = `❌ ${e.data?.message ?? e.message}`;
+  } finally {
+    fetchingPreview.value = false;
+  }
+}
+
+async function saveManualAndReload() {
+  const entries = boats.value
+    .filter((b) => {
+      const m = manualInputs.value[b.艇番];
+      return m && (m.展示タイム !== "" || m.スタートST !== "");
+    })
+    .map((b) => {
+      const m = manualInputs.value[b.艇番];
+      return {
+        艇番: b.艇番,
+        展示タイム: m?.展示タイム !== "" ? parseFloat(m.展示タイム) : null,
+        スタートST: m?.スタートST !== "" ? parseFloat(m.スタートST) : null,
+      };
+    });
+  if (entries.length === 0) return;
+  manualSaving.value = true;
+  try {
+    await $fetch("/api/preview-manual", {
+      method: "POST",
+      body: {
+        date: selectedDate.value,
+        stadium: selectedStadium.value,
+        raceNo: selectedRace.value,
+        boats: entries,
+      },
+    });
+    manualInputs.value = {};
+    await fetchPredict();
+  } finally {
+    manualSaving.value = false;
+  }
+}
 const upsetAnalysis = ref<{
   score: number;
   level: string;
@@ -883,8 +1204,32 @@ const isFinished = computed(() => {
 // ---- Note記事生成（Claude API） ----
 const noteModalOpen = ref(false);
 const noteCopied = ref(false);
+const noteImageCopied = ref(false);
 const noteGenerating = ref(false);
+const noteAllGenerating = ref(false);
 const noteError = ref("");
+// 全レースまとめカード用
+const isAllNote = ref(false);
+const allNoteCards = ref<
+  {
+    raceNo: number;
+    gradeName: string;
+    raceName: string;
+    honmei: string;
+    taikou: string;
+    ana: string;
+    oozana: string;
+    stars: string;
+    comment: string;
+    hitLabel: string;
+    result: string;
+  }[]
+>([]);
+const allNoteLead = ref("");
+const allNoteVenueName = ref("");
+const allNoteDateLabel = ref("");
+const allNoteCostJpy = ref<number | null>(null);
+const hasSavedAllNote = ref(false);
 const generatedMarkdown = ref("");
 const renderedMarkdown = computed(() =>
   generatedMarkdown.value ? marked(generatedMarkdown.value) : "",
@@ -892,7 +1237,7 @@ const renderedMarkdown = computed(() =>
 
 // 現在のレースに保存済み記事があるか
 const hasSavedNote = ref(false);
-const savedNoteAt  = ref<string | null>(null);
+const savedNoteAt = ref<string | null>(null);
 
 // レース切り替え時にDBから保存済みフラグを確認
 watch(
@@ -904,7 +1249,7 @@ watch(
         `/api/note-article?date=${selectedDate.value}&stadium=${selectedStadium.value}&raceNo=${selectedRace.value}`,
       );
       hasSavedNote.value = res.found;
-      savedNoteAt.value  = res.found ? (res.savedAt ?? null) : null;
+      savedNoteAt.value = res.found ? (res.savedAt ?? null) : null;
     } catch {
       hasSavedNote.value = false;
     }
@@ -912,13 +1257,27 @@ watch(
   { immediate: true },
 );
 
+// 全レースまとめ保存確認（日付・予想会場が変わるたびに実行）
+async function checkSavedAllNote() {
+  if (!noteStadium.value) return;
+  try {
+    const res = await $fetch<{ found: boolean }>(
+      `/api/note-article?date=${selectedDate.value}&stadium=${noteStadium.value}&raceNo=0`,
+    );
+    hasSavedAllNote.value = res.found;
+  } catch {
+    hasSavedAllNote.value = false;
+  }
+}
+watch([selectedDate, noteStadium], checkSavedAllNote, { immediate: true });
+
 async function saveNoteToStorage(markdown: string) {
   await $fetch("/api/note-article", {
     method: "POST",
     body: {
-      date:     selectedDate.value,
-      stadium:  selectedStadium.value,
-      raceNo:   selectedRace.value,
+      date: selectedDate.value,
+      stadium: selectedStadium.value,
+      raceNo: selectedRace.value,
       markdown,
     },
   });
@@ -927,14 +1286,18 @@ async function saveNoteToStorage(markdown: string) {
 
 async function openSavedNote() {
   try {
-    const res = await $fetch<{ found: boolean; markdown?: string; savedAt?: string }>(
+    const res = await $fetch<{
+      found: boolean;
+      markdown?: string;
+      savedAt?: string;
+    }>(
       `/api/note-article?date=${selectedDate.value}&stadium=${selectedStadium.value}&raceNo=${selectedRace.value}`,
     );
     if (!res.found || !res.markdown) return;
     generatedMarkdown.value = res.markdown;
-    savedNoteAt.value       = res.savedAt ?? null;
-    noteError.value         = "";
-    noteModalOpen.value     = true;
+    savedNoteAt.value = res.savedAt ?? null;
+    noteError.value = "";
+    noteModalOpen.value = true;
   } catch {}
 }
 
@@ -945,11 +1308,12 @@ async function doGenerateNote() {
   noteGenerating.value = true;
   noteError.value = "";
   generatedMarkdown.value = "";
+  isAllNote.value = false;
+  allNoteCards.value = [];
   noteModalOpen.value = true;
 
   const venue =
-    venues.value.find((v) => v.会場番号 === selectedStadium.value)?.会場名 ??
-    "";
+    venues.value.find((v) => v.会場番号 === noteStadium.value)?.会場名 ?? "";
   const b1 = sortedBoats.value[0],
     b2 = sortedBoats.value[1],
     b3 = sortedBoats.value[2],
@@ -969,7 +1333,7 @@ async function doGenerateNote() {
         scoreDiff: scoreDiff.value,
         honmei: `${b1.艇番}→${b2.艇番}→${b3?.艇番 ?? "?"}`,
         taikou: (() => {
-          const t = taikouSortedBoats.value;
+          const t = taikouComboBoats.value;
           return `${t[0]?.艇番}→${t[1]?.艇番 ?? "?"}→${t[2]?.艇番 ?? "?"}`;
         })(),
         ana: b4 ? `${b4.艇番}→${b1.艇番}→${b2.艇番}` : null,
@@ -986,6 +1350,229 @@ async function doGenerateNote() {
     noteError.value = e.data?.message ?? e.message ?? "生成に失敗しました";
   } finally {
     noteGenerating.value = false;
+  }
+}
+
+// ---- 全レースまとめNote生成 ----
+async function doGenerateNoteAll() {
+  if (!noteStadium.value || !venues.value.length) return;
+  const venueName =
+    venues.value.find((v) => v.会場番号 === noteStadium.value)?.会場名 ?? "";
+
+  noteAllGenerating.value = true;
+  noteError.value = "";
+  generatedMarkdown.value = "";
+  allNoteCards.value = [];
+  isAllNote.value = true;
+  noteModalOpen.value = true;
+
+  try {
+    // ① レース結果とレースデータを並列取得（どちらもDBのみ・AIなし）
+    const [raceResultsRaw, predictResults] = await Promise.all([
+      $fetch<any[]>(
+        `/api/results?date=${selectedDate.value}&stadium=${noteStadium.value}`
+      ).catch(() => [] as any[]),
+      Promise.allSettled(
+        Array.from({ length: 12 }, (_, i) => i + 1).map((raceNo) =>
+          $fetch<{
+            weather: any;
+            boats: any[];
+            raceInfo: any;
+            upsetAnalysis: any;
+          }>(
+            `/api/predict?date=${selectedDate.value}&stadium=${noteStadium.value}&raceNo=${raceNo}`,
+          ).then((res) => ({ raceNo, ...res })),
+        ),
+      ),
+    ]);
+
+    const races = predictResults
+      .filter(
+        (r): r is PromiseFulfilledResult<any> =>
+          r.status === "fulfilled" && r.value.boats?.length > 0,
+      )
+      .map((r) => ({
+        raceNo: r.value.raceNo,
+        boats: r.value.boats,
+        raceInfo: r.value.raceInfo ?? {},
+        weather: r.value.weather ?? {},
+        upsetAnalysis: r.value.upsetAnalysis ?? null,
+      }));
+
+    if (races.length === 0) {
+      noteError.value = "取得できたレースデータがありません";
+      return;
+    }
+
+    // ② 結果マップを作成
+    const resultMap: Record<number, number[]> = {};
+    for (const r of raceResultsRaw) {
+      resultMap[r.raceNo] = r.boats
+        .sort((a: any, b: any) => a.着順 - b.着順)
+        .map((b: any) => b.艇番);
+    }
+
+    // ③ 全レースの結果が揃っているか確認（AIトークン不使用の分岐）
+    const allDone = races.length > 0 && races.every(
+      (r) => resultMap[r.raceNo]?.length >= 3
+    );
+
+    if (allDone) {
+      // 全レース終了済み → predict-history からスナップショット予想を取得して的中判定
+      const historyData = await $fetch<{ races: any[] }>(
+        `/api/predict-history?date=${selectedDate.value}&stadium=${noteStadium.value}`
+      ).catch(() => ({ races: [] as any[] }));
+
+      allNoteVenueName.value = venueName;
+      allNoteDateLabel.value = selectedDate.value.replace(/-/g, "/");
+      allNoteLead.value = "全レース終了！レース結果と的中結果をまとめました。";
+      allNoteCostJpy.value = null;
+
+      allNoteCards.value = races.map((race) => {
+        const actual = resultMap[race.raceNo];
+        const result = actual?.slice(0, 3).join("→") ?? "";
+
+        // スナップショット予想を取得（個別予想ページで表示済みの買い目）
+        const histRace = historyData.races?.find((r: any) => r.raceNo === race.raceNo);
+        const snap = histRace?.snapshotBets ?? null;
+        const honmei = snap?.本命 ?? "";
+        const taikou = snap?.対抗 ?? "";
+        const ana    = snap?.穴   ?? "";
+        const oozana = snap?.大穴 ?? "";
+
+        // 的中判定
+        let hitLabel = "";
+        if (actual && actual.length >= 3 && snap) {
+          const match3 = (bet: string) => {
+            const bets = bet ? bet.split("→").map(Number) : [];
+            return bets.length >= 3 &&
+              bets[0] === actual[0] && bets[1] === actual[1] && bets[2] === actual[2];
+          };
+          if      (match3(honmei))  hitLabel = "🎯 本命的中！";
+          else if (match3(taikou))  hitLabel = "🎯 対抗的中！";
+          else if (match3(ana))     hitLabel = "🎯 穴的中！";
+          else if (match3(oozana))  hitLabel = "🎯 大穴的中！";
+        }
+
+        return {
+          raceNo: race.raceNo,
+          gradeName: race.raceInfo?.グレード名 ?? "",
+          raceName:  race.raceInfo?.レース名 ?? "",
+          honmei,
+          taikou,
+          ana,
+          oozana,
+          stars:   "",
+          comment: snap ? "" : "（予想スナップショットなし）",
+          hitLabel,
+          result,
+        };
+      });
+      return;
+    }
+
+    // ④ レース中または未開催 → 従来どおりAIで予想を生成
+    const res = await $fetch<{
+      markdown: string;
+      cards: any[];
+      lead: string;
+      venueName: string;
+      dateLabel: string;
+      costJpy: number;
+    }>("/api/generate-note-all", {
+      method: "POST",
+      body: { date: selectedDate.value, venueName, races },
+    });
+
+    generatedMarkdown.value = res.markdown;
+    allNoteLead.value = res.lead ?? "";
+    allNoteVenueName.value = res.venueName ?? venueName;
+    allNoteDateLabel.value = res.dateLabel ?? "";
+    allNoteCostJpy.value = res.costJpy ?? null;
+
+    // 的中判定（結果が既に一部出ている場合も対応）
+    const cards = res.cards ?? [];
+    allNoteCards.value = cards.map((card: any) => {
+      const actual = resultMap[card.raceNo];
+      let hitLabel = "";
+      let result = "";
+      if (actual && actual.length >= 3) {
+        result = actual.slice(0, 3).join("→");
+        const match3 = (bet: string) => {
+          const bets = bet ? bet.split("→").map(Number) : [];
+          return bets.length >= 3 &&
+            bets[0] === actual[0] && bets[1] === actual[1] && bets[2] === actual[2];
+        };
+        if      (match3(card.honmei))  hitLabel = "🎯 本命的中！";
+        else if (match3(card.taikou))  hitLabel = "🎯 対抗的中！";
+        else if (match3(card.ana))     hitLabel = "🎯 穴的中！";
+        else if (match3(card.oozana))  hitLabel = "🎯 大穴的中！";
+      }
+      return { ...card, hitLabel, result };
+    });
+
+    // DBに保存（raceNo=0 を全レースまとめの識別子として使用）
+    await $fetch("/api/note-article", {
+      method: "POST",
+      body: {
+        date: selectedDate.value,
+        stadium: noteStadium.value,
+        raceNo: 0,
+        markdown: res.markdown,
+      },
+    });
+    hasSavedAllNote.value = true;
+  } catch (e: any) {
+    noteError.value = e.data?.message ?? e.message ?? "生成に失敗しました";
+  } finally {
+    noteAllGenerating.value = false;
+  }
+}
+
+// ---- note-modal-body を画像としてクリップボードにコピー ----
+async function copyNoteBodyAsImage() {
+  const el = (document.querySelector(".race-card-grid") ?? document.querySelector(".note-modal-body")) as HTMLElement | null;
+  if (!el) return;
+  try {
+    const html2canvas = (await import("html2canvas")).default;
+    const PAD = 20;        // 上左右の余白px
+    const PAD_BOTTOM = 40; // 下の余白px
+
+    // 余白付きラッパーを一時的に生成してキャプチャ
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `
+      position: fixed; top: -99999px; left: -99999px;
+      padding: ${PAD}px ${PAD}px ${PAD_BOTTOM}px ${PAD}px;
+      background: #1e2235;
+      width: ${el.scrollWidth + PAD * 2}px;
+    `;
+    const clone = el.cloneNode(true) as HTMLElement;
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    const fullHeight = wrapper.scrollHeight;
+    const canvas = await html2canvas(wrapper, {
+      backgroundColor: "#1e2235",
+      scale: 2,
+      scrollY: 0,
+      height: fullHeight,
+      windowHeight: fullHeight,
+    });
+
+    document.body.removeChild(wrapper);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      noteImageCopied.value = true;
+      setTimeout(() => {
+        noteImageCopied.value = false;
+      }, 2500);
+    });
+  } catch (e) {
+    console.error("画像コピー失敗:", e);
   }
 }
 
@@ -1047,9 +1634,9 @@ const tweetText = computed(() => {
 
   // 買い目
   const honmei = `${b1.艇番}→${b2.艇番}→${b3?.艇番 ?? "?"}`; // ◎本命
-  const tb1 = taikouSortedBoats.value[0],
-    tb2 = taikouSortedBoats.value[1],
-    tb3 = taikouSortedBoats.value[2];
+  const tb1 = taikouComboBoats.value[0],
+    tb2 = taikouComboBoats.value[1],
+    tb3 = taikouComboBoats.value[2];
   const taikou = `${tb1?.艇番}→${tb2?.艇番 ?? "?"}→${tb3?.艇番 ?? "?"}`; // ○対抗（調子重視）
   const ana = b4 ? `${b4.艇番}→${b1.艇番}→${b2.艇番}` : ""; // △穴（4位が1着）
 
@@ -1079,6 +1666,11 @@ const sortedBoats = computed(() =>
   [...boats.value].sort((a, b) => b.score - a.score),
 );
 
+// 艇別スコア詳細テーブル用：コース順
+const courseOrderBoats = computed(() =>
+  [...boats.value].sort((a, b) => a.コース番号 - b.コース番号),
+);
+
 // 大穴買い目（常に表示：APIのpickがあればそれを使用、なければ外コース上位軸で計算）
 const upsetPickBoats = computed(() => {
   const pick = upsetAnalysis.value?.pick;
@@ -1095,15 +1687,56 @@ const upsetPickBoats = computed(() => {
 });
 
 // 対抗用スコア：1コースを少し減点し、今節調子を重視したランキング
-const taikouSortedBoats = computed(() =>
-  [...boats.value]
+// 対抗スコア計算（コース差なだらか、今節調子・級別・展示を重視）
+const TAIKOU_COURSE_SCORE: Record<number, number> = {
+  1: 4,
+  2: 3.5,
+  3: 3,
+  4: 2.5,
+  5: 2,
+  6: 2,
+};
+const TAIKOU_GRADE_SCORE: Record<string, number> = {
+  A1: 8,
+  A2: 5,
+  B1: 2,
+  B2: 0,
+};
+const taikouSortedBoats = computed(() => {
+  const active = boats.value.filter(
+    (b) => b.展示タイム != null && b.展示タイム > 0,
+  );
+  const fastestTime =
+    active.length > 0 ? Math.min(...active.map((b) => b.展示タイム)) : null;
+  return [...boats.value]
     .map((b) => {
-      const coursePenalty = b.コース番号 === 1 ? 5 : 0;
-      const sessionBonus = (b.scoreDetail?.今節点 ?? 0) * 1.5; // 今節点を追加で1.5倍上乗せ
-      return { ...b, taikouScore: b.score - coursePenalty + sessionBonus };
+      const courseScore = TAIKOU_COURSE_SCORE[b.コース番号 ?? 6] ?? 2; // C1=4〜C6=2
+      const sessionScore = (b.scoreDetail?.今節点 ?? 0) * 3; // 今節調子重視
+      const gradeScore = TAIKOU_GRADE_SCORE[b.級別] ?? 0; // 級別
+      const exhibitScore =
+        fastestTime != null && b.展示タイム > 0
+          ? (fastestTime - b.展示タイム) * 15
+          : 0; // 展示タイム
+      return {
+        ...b,
+        taikouScore: courseScore + sessionScore + gradeScore + exhibitScore,
+      };
     })
-    .sort((a, b) => b.taikouScore - a.taikouScore),
-);
+    .sort((a, b) => b.taikouScore - a.taikouScore);
+});
+
+// 対抗買い目：本命と同じ組み合わせなら4位差し替え
+const taikouComboBoats = computed(() => {
+  const tb = taikouSortedBoats.value;
+  const sb = sortedBoats.value;
+  if (tb.length < 3 || sb.length < 3) return tb.slice(0, 3);
+  const honmeiKey = `${sb[0]?.艇番}→${sb[1]?.艇番}→${sb[2]?.艇番}`;
+  const taikouKey = `${tb[0]?.艇番}→${tb[1]?.艇番}→${tb[2]?.艇番}`;
+  if (taikouKey === honmeiKey && tb.length >= 4) {
+    return [tb[0], tb[1], tb[3]];
+  }
+  return tb.slice(0, 3);
+});
 
 // 穴と大穴が同じ買い目かどうか判定
 const isSameAsAna = computed(() => {
@@ -1119,45 +1752,52 @@ const isSameAsAna = computed(() => {
 
 // ---- 的中判定 ----
 // raceResult.boats は着順昇順で並んでいる前提
-const resultOrder = computed(() =>
-  raceResult.value?.boats
-    .slice()
-    .sort((a, b) => a.着順 - b.着順)
-    .map((b) => b.艇番) ?? [],
+const resultOrder = computed(
+  () =>
+    raceResult.value?.boats
+      .slice()
+      .sort((a, b) => a.着順 - b.着順)
+      .map((b) => b.艇番) ?? [],
 );
-const hitTansho = computed(() =>
-  resultOrder.value.length >= 1 &&
-  sortedBoats.value[0]?.艇番 === resultOrder.value[0],
+const hitTansho = computed(
+  () =>
+    resultOrder.value.length >= 1 &&
+    sortedBoats.value[0]?.艇番 === resultOrder.value[0],
 );
-const hit2Rentan = computed(() =>
-  resultOrder.value.length >= 2 &&
-  sortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
-  sortedBoats.value[1]?.艇番 === resultOrder.value[1],
+const hit2Rentan = computed(
+  () =>
+    resultOrder.value.length >= 2 &&
+    sortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
+    sortedBoats.value[1]?.艇番 === resultOrder.value[1],
 );
-const hit3RentanHonmei = computed(() =>
-  resultOrder.value.length >= 3 &&
-  sortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
-  sortedBoats.value[1]?.艇番 === resultOrder.value[1] &&
-  sortedBoats.value[2]?.艇番 === resultOrder.value[2],
+const hit3RentanHonmei = computed(
+  () =>
+    resultOrder.value.length >= 3 &&
+    sortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
+    sortedBoats.value[1]?.艇番 === resultOrder.value[1] &&
+    sortedBoats.value[2]?.艇番 === resultOrder.value[2],
 );
-const hit3RentanTaikou = computed(() =>
-  resultOrder.value.length >= 3 &&
-  taikouSortedBoats.value[0]?.艇番 === resultOrder.value[0] &&
-  taikouSortedBoats.value[1]?.艇番 === resultOrder.value[1] &&
-  taikouSortedBoats.value[2]?.艇番 === resultOrder.value[2],
+const hit3RentanTaikou = computed(
+  () =>
+    resultOrder.value.length >= 3 &&
+    taikouComboBoats.value[0]?.艇番 === resultOrder.value[0] &&
+    taikouComboBoats.value[1]?.艇番 === resultOrder.value[1] &&
+    taikouComboBoats.value[2]?.艇番 === resultOrder.value[2],
 );
-const hit3RentanAna = computed(() =>
-  resultOrder.value.length >= 3 &&
-  sortedBoats.value[3]?.艇番 === resultOrder.value[0] &&
-  sortedBoats.value[0]?.艇番 === resultOrder.value[1] &&
-  sortedBoats.value[1]?.艇番 === resultOrder.value[2],
+const hit3RentanAna = computed(
+  () =>
+    resultOrder.value.length >= 3 &&
+    sortedBoats.value[3]?.艇番 === resultOrder.value[0] &&
+    sortedBoats.value[0]?.艇番 === resultOrder.value[1] &&
+    sortedBoats.value[1]?.艇番 === resultOrder.value[2],
 );
-const hit3RentanOozana = computed(() =>
-  resultOrder.value.length >= 3 &&
-  upsetPickBoats.value.length === 3 &&
-  upsetPickBoats.value[0] === resultOrder.value[0] &&
-  upsetPickBoats.value[1] === resultOrder.value[1] &&
-  upsetPickBoats.value[2] === resultOrder.value[2],
+const hit3RentanOozana = computed(
+  () =>
+    resultOrder.value.length >= 3 &&
+    upsetPickBoats.value.length === 3 &&
+    upsetPickBoats.value[0] === resultOrder.value[0] &&
+    upsetPickBoats.value[1] === resultOrder.value[1] &&
+    upsetPickBoats.value[2] === resultOrder.value[2],
 );
 
 // 的中した買い目の一覧
@@ -1167,15 +1807,30 @@ const hitBets = computed(() => {
   if (hitTansho.value)
     list.push({ label: "単勝", combo: `${sortedBoats.value[0]?.艇番}` });
   if (hit2Rentan.value)
-    list.push({ label: "2連単", combo: `${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}` });
+    list.push({
+      label: "2連単",
+      combo: `${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}`,
+    });
   if (hit3RentanHonmei.value)
-    list.push({ label: "3連単（本命）", combo: `${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}→${sortedBoats.value[2]?.艇番}` });
+    list.push({
+      label: "3連単（本命）",
+      combo: `${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}→${sortedBoats.value[2]?.艇番}`,
+    });
   if (hit3RentanTaikou.value)
-    list.push({ label: "3連単（対抗）", combo: `${taikouSortedBoats.value[0]?.艇番}→${taikouSortedBoats.value[1]?.艇番}→${taikouSortedBoats.value[2]?.艇番}` });
+    list.push({
+      label: "3連単（対抗）",
+      combo: `${taikouComboBoats.value[0]?.艇番}→${taikouComboBoats.value[1]?.艇番}→${taikouComboBoats.value[2]?.艇番}`,
+    });
   if (hit3RentanAna.value)
-    list.push({ label: "3連単（穴）", combo: `${sortedBoats.value[3]?.艇番}→${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}` });
+    list.push({
+      label: "3連単（穴）",
+      combo: `${sortedBoats.value[3]?.艇番}→${sortedBoats.value[0]?.艇番}→${sortedBoats.value[1]?.艇番}`,
+    });
   if (hit3RentanOozana.value)
-    list.push({ label: "3連単（大穴）", combo: `${upsetPickBoats.value[0]}→${upsetPickBoats.value[1]}→${upsetPickBoats.value[2]}` });
+    list.push({
+      label: "3連単（大穴）",
+      combo: `${upsetPickBoats.value[0]}→${upsetPickBoats.value[1]}→${upsetPickBoats.value[2]}`,
+    });
   return list;
 });
 
@@ -1451,6 +2106,101 @@ async function fetchPredict() {
         } catch {}
       }),
     );
+
+    // ---- 予想スナップショットを自動保存 ----
+    // computed は fetchPredict 完了後に同期的に評価できないため、ここで直接計算する
+    if (boats.value.length > 0) {
+      try {
+        const sb = [...boats.value].sort((a, b) => b.score - a.score);
+        const b1 = sb[0],
+          b2 = sb[1],
+          b3 = sb[2],
+          b4 = sb[3];
+
+        const _taikouActive = boats.value.filter(
+          (b) => b.展示タイム != null && b.展示タイム > 0,
+        );
+        const _taikouFastest =
+          _taikouActive.length > 0
+            ? Math.min(..._taikouActive.map((b) => b.展示タイム))
+            : null;
+        const _gradeScore: Record<string, number> = {
+          A1: 8,
+          A2: 5,
+          B1: 2,
+          B2: 0,
+        };
+        const _courseScore: Record<number, number> = {
+          1: 4,
+          2: 3.5,
+          3: 3,
+          4: 2.5,
+          5: 2,
+          6: 2,
+        };
+        const tbFull = [...boats.value]
+          .map((b) => ({
+            ...b,
+            taikouScore:
+              (_courseScore[b.コース番号 ?? 6] ?? 2) +
+              (b.scoreDetail?.今節点 ?? 0) * 3 +
+              (_gradeScore[b.級別] ?? 0) +
+              (_taikouFastest != null && b.展示タイム > 0
+                ? (_taikouFastest - b.展示タイム) * 15
+                : 0),
+          }))
+          .sort((a, b) => b.taikouScore - a.taikouScore);
+        const _honmeiKey =
+          b1 && b2 && b3 ? `${b1.艇番}→${b2.艇番}→${b3.艇番}` : "";
+        const _taikouKey =
+          tbFull[0] && tbFull[1] && tbFull[2]
+            ? `${tbFull[0].艇番}→${tbFull[1].艇番}→${tbFull[2].艇番}`
+            : "";
+        const tb =
+          _taikouKey === _honmeiKey && tbFull.length >= 4
+            ? [tbFull[0], tbFull[1], tbFull[3]]
+            : tbFull.slice(0, 3);
+
+        const outer = [...boats.value]
+          .filter((b) => (b.コース番号 ?? 0) >= 4)
+          .sort((a, b) => b.score - a.score);
+        const upsetPick = upsetAnalysis.value?.pick;
+        let oozanaCombo: string | null = null;
+        if (upsetPick) {
+          oozanaCombo = upsetPick;
+        } else if (outer.length > 0) {
+          const axisNo = outer[0].艇番;
+          const rest = sb.filter((b) => b.艇番 !== axisNo);
+          if (rest.length >= 2)
+            oozanaCombo = `${axisNo}→${rest[0].艇番}→${rest[1].艇番}`;
+        }
+
+        const anaCombo = b4 ? `${b4.艇番}→${b1.艇番}→${b2.艇番}` : null;
+        const isSameOozana =
+          oozanaCombo &&
+          anaCombo &&
+          oozanaCombo ===
+            `${anaCombo.split("→")[0]}→${anaCombo.split("→")[1]}→${anaCombo.split("→")[2]}`;
+
+        await $fetch("/api/predict-snapshot", {
+          method: "POST",
+          body: {
+            date: selectedDate.value,
+            stadium: selectedStadium.value,
+            raceNo: selectedRace.value,
+            honmei: b1 && b2 && b3 ? `${b1.艇番}→${b2.艇番}→${b3.艇番}` : null,
+            taikou:
+              tb[0] && tb[1] && tb[2]
+                ? `${tb[0].艇番}→${tb[1].艇番}→${tb[2].艇番}`
+                : null,
+            ana: anaCombo,
+            oozana: isSameOozana ? null : oozanaCombo,
+            boats: boats.value,
+            upsetAnalysis: upsetAnalysis.value,
+          },
+        });
+      } catch {} // スナップショット保存失敗は無視
+    }
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -1509,6 +2259,7 @@ async function captureAndCopy(el: HTMLElement | null, flag: Ref<boolean>) {
 const copyChartData = () => captureAndCopy(chartCardRef.value, copiedChart);
 const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
 </script>
+
 
 <style scoped lang="scss">
 /* 予想サマリーカード */
@@ -1651,7 +2402,7 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
   border-radius: 8px;
   padding: 6px 12px;
 }
-.bet-label {
+.bet-item-label {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.75);
   margin-right: 2px;
@@ -1665,7 +2416,7 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid rgba(239, 68, 68, 0.4);
 }
-.bet-label-oozana {
+.bet-item-label-oozana {
   color: #fca5a5;
   font-weight: 800;
 }
@@ -1823,6 +2574,111 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
 }
 
 /* クリップボードコピーボタン */
+
+.table-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ===== 直前情報 自動取得ボタン ===== */
+.fetch-preview-btn {
+  padding: 2px 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+.fetch-preview-msg {
+  font-size: 11px;
+  font-weight: normal;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+/* ===== 展示T・展示ST 手動入力 ===== */
+.manual-input {
+  width: 72px;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: 1px dashed #f59e0b;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #92400e;
+  text-align: center;
+  outline: none;
+  &:focus {
+    border-color: #d97706;
+    background: #fef3c7;
+  }
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+  }
+}
+.manual-save-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #fffbeb;
+  border-top: 1px solid #fde68a;
+}
+.manual-save-note {
+  font-size: 12px;
+  color: #92400e;
+  flex: 1;
+}
+.manual-save-btn {
+  padding: 5px 16px;
+  background: #f59e0b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover:not(:disabled) {
+    background: #d97706;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* ===== weather / weight / ST ===== */
+.weather-badge {
+  font-size: 11px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.weight-plus {
+  color: var(--color-warning-dark);
+  font-weight: 700;
+}
+.st-flying {
+  color: var(--color-error);
+  font-weight: 700;
+}
+
 .copy-btn {
   margin-left: auto;
   padding: 2px 10px;
@@ -1965,6 +2821,9 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
 .rank-badge {
   font-size: 16px;
 }
+.rank-mark {
+  font-size: 26px;
+}
 
 /* 予想の見方ガイド */
 .guide-card {
@@ -1979,6 +2838,13 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
   font-weight: 700;
   margin-bottom: 8px;
   color: var(--color-primary);
+}
+.guide-title-sub {
+  font-size: 14px;
+  font-weight: normal;
+  opacity: 0.8;
+  margin: 5px 0;
+  display: block;
 }
 .guide-body {
   display: flex;
@@ -2346,6 +3212,8 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
   font-weight: 700;
   margin-right: 6px;
 }
+.race-title-link { color: inherit; text-decoration: none; }
+.race-title-link:hover { text-decoration: underline; }
 .race-subtitle {
   font-size: 11px;
   opacity: 0.75;
@@ -2556,4 +3424,151 @@ const copyTableData = () => captureAndCopy(tableCardRef.value, copiedTable);
   text-align: center;
   margin-top: 12px;
 }
+/* ---- 全レースまとめ Note ---- */
+/* コストバッジ */
+.note-cost-badge {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+/* 画像コピーボタン */
+.note-img-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #5b8dee;
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  &:hover { background: #3a6fd8; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+/* filter-bar Note セクション */
+.filter-bar-note-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.filter-bar-note-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 全レースまとめヘッダー */
+.all-note-header {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: rgba(65,201,160,0.08);
+  border-left: 3px solid #41c9a0;
+  border-radius: 4px;
+}
+.all-note-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 4px;
+}
+.all-note-lead {
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  margin: 0 0 4px;
+  line-height: 1.6;
+}
+.all-note-criteria {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  margin: 0;
+}
+/* カードグリッド 4列 */
+.race-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.race-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.race-card--hit {
+  border-color: #f5c542;
+  box-shadow: 0 0 8px rgba(245,197,66,0.4);
+}
+.race-card-hit-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: #f5c542;
+  color: #1e2235;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  z-index: 1;
+}
+.race-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 6px;
+}
+.race-card-num  { font-size: 14px; font-weight: 800; color: #41c9a0; display: flex; align-items: center; gap: 4px; }
+.race-card-name { font-size: 10px; color: rgba(255,255,255,0.7); }
+.race-card-grade { font-size: 9px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); border-radius: 4px; padding: 1px 5px; font-weight: 400; }
+.race-card-result {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.race-card-body {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.race-card-body li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  gap: 4px;
+}
+.bet-label { color: rgba(255,255,255,0.5); white-space: nowrap; font-size: 10px; }
+.bet-val   { font-weight: 700; color: #fff; font-size: 12px; }
+.bet-val.stars { color: #f5c542; letter-spacing: 1px; }
+.race-card-comment {
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.5;
+  margin: 0;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 20px;
+}
+
 </style>

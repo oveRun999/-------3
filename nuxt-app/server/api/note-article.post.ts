@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const { date, stadium, raceNo, markdown } = body
 
-  if (!date || !stadium || !raceNo || !markdown) {
+  if (!date || !stadium || raceNo == null || !markdown) {
     throw createError({ statusCode: 400, message: 'date / stadium / raceNo / markdown は必須です' })
   }
 

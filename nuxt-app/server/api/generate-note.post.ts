@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getDB } from '~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -17,6 +18,31 @@ export default defineEventHandler(async (event) => {
     oozana,
     upsetAnalysis,
   } = body;
+
+  // ---- 過去記事をDBから取得 ----
+  const db = getDB()
+  const pastRows = db.prepare(`
+    SELECT 日付, 会場番号, レース番号, 記事内容, 保存日時
+    FROM note記事
+    ORDER BY 保存日時 DESC
+    LIMIT 10
+  `).all() as { 日付: string; 会場番号: number; レース番号: number; 記事内容: string; 保存日時: string }[]
+
+  const totalCount = (db.prepare(`SELECT COUNT(*) as cnt FROM note記事`).get() as any)?.cnt ?? 0
+  const articleNo  = totalCount + 1  // 今回が何本目か
+
+  // ---- 買い目の重複を除去 ----
+  const seenCombos = new Set<string>()
+  function dedupBet(combo: string | null | undefined): string | null {
+    if (!combo) return null
+    if (seenCombos.has(combo)) return null
+    seenCombos.add(combo)
+    return combo
+  }
+  const dedupedHonmei  = dedupBet(honmei)
+  const dedupedTaikou  = dedupBet(taikou)
+  const dedupedAna     = dedupBet(ana)
+  const dedupedOozana  = dedupBet(oozana)
 
   const config = useRuntimeConfig();
   const apiKey = config.anthropicApiKey;
@@ -57,15 +83,38 @@ export default defineEventHandler(async (event) => {
   const weatherText = weatherItems.length > 0 ? weatherItems.join("\n") : null;
 
   const buyLines = [
-    `◎本線: ${honmei}`,
-    `○対抗: ${taikou}`,
-    ana ? `△穴: ${ana}` : "",
-    oozana ? `💥大穴: ${oozana}` : "",
+    dedupedHonmei  ? `◎本線: ${dedupedHonmei}`  : "",
+    dedupedTaikou  ? `○対抗: ${dedupedTaikou}`  : "",
+    dedupedAna     ? `△穴: ${dedupedAna}`       : "",
+    dedupedOozana  ? `💥大穴: ${dedupedOozana}` : "",
   ]
     .filter(Boolean)
     .join("\n");
 
-  const prompt = `あなたは競艇予想をnoteで発信している40代のおじさんです。柔らかい物腰で、読者に語りかけるような文体で書きます。「〜ですね」「〜なんですよ」「〜かなと思います」といった口調を使ってください。断定的にならず、あくまで自分の見解として丁寧に伝えます。
+  // ---- 過去記事サマリー（直近3件の冒頭200文字）----
+  const pastSummary = pastRows.slice(0, 3).map((r, i) => {
+    const snippet = r.記事内容.slice(0, 200).replace(/\n/g, ' ')
+    return `[${i + 1}件前 ${r.保存日時}] ${r.日付} ${r.レース番号}R: ${snippet}…`
+  }).join('\n')
+
+  // 今日すでに記事があれば挨拶なし
+  const todayStr    = new Date().toISOString().slice(0, 10)
+  const isFirstToday = !pastRows.some(r => r.保存日時.startsWith(todayStr))
+
+  const prompt = `## 重要な執筆前確認事項
+
+### この記事は通算 ${articleNo} 本目の記事です
+- 出力済み記事数: ${totalCount} 本
+${isFirstToday
+  ? '- 今日最初の記事です。書き出しに**1文だけ**短い挨拶を入れてください（時刻・時間帯には触れず自然に）'
+  : '- 今日すでに記事があります。**挨拶は不要**です。いきなり本題から始めてください'}
+${pastRows.length > 0 ? `- 直近の記事を参考に、同じ言い回し・同じ構成パターン・同じ話題が被らないよう工夫してください` : '- これが初めての記事です。テンプレ感が出ないように自然な書き出しをしてください'}
+
+${pastSummary ? `### 直近の記事サマリー（内容が被らないよう参考にすること）\n${pastSummary}\n` : ''}
+
+---
+
+あなたは競艇予想をnoteで発信している40代のおじさんです。柔らかい物腰で、読者に語りかけるような文体で書きます。「〜ですね」「〜なんですよ」「〜かなと思います」といった口調を使ってください。断定的にならず、あくまで自分の見解として丁寧に伝えます。
 
 以下のレースデータをもとに、noteに投稿する競艇予想記事をMarkdown形式で書いてください。
 
@@ -157,5 +206,5 @@ ${buyLines}
     `[usage] 推定費用: $${costUsd.toFixed(4)} (約${costJpy.toFixed(1)}円)`,
   );
 
-  return { markdown: text };
+  return { markdown: text, articleNo };
 });

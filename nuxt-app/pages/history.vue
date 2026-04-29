@@ -142,10 +142,24 @@
         </div>
       </div>
 
+      <!-- アンカーナビ（特定会場選択時・追従型） -->
+      <Transition name="nav-slide">
+        <nav v-if="venueFilter !== null" class="race-anchor-nav">
+          <button
+            v-for="race in filteredRaces"
+            :key="`nav-${race.raceNo}`"
+            class="anchor-item"
+            :class="anchorClass(race)"
+            @click="scrollToRace(race)"
+          >{{ race.raceNo }}R</button>
+        </nav>
+      </Transition>
+
       <!-- レース別カード -->
       <div
         v-for="race in filteredRaces"
         :key="`${race.会場番号}-${race.raceNo}`"
+        :id="`race-${race.会場番号}-${race.raceNo}`"
         class="card"
         :class="isOozana(race) ? 'card-oozana' : ''"
       >
@@ -276,88 +290,63 @@
         <div class="bet-section">
           <div class="bet-title">💡 予想一覧</div>
           <div class="bet-list">
+            <!-- 単勝 -->
             <div class="bet-item">
               <span class="bet-label">単勝</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[0]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[0]?.艇番 }}</span
-              >
+              <span :class="`boat-badge boat-${getHonmeiBoats(race)[0]}`">{{ getHonmeiBoats(race)[0] }}</span>
             </div>
+            <!-- 2連単 -->
             <div class="bet-item">
               <span class="bet-label">2連単</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[0]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[0]?.艇番 }}</span
-              >
+              <span :class="`boat-badge boat-${getHonmeiBoats(race)[0]}`">{{ getHonmeiBoats(race)[0] }}</span>
               <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[1]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[1]?.艇番 }}</span
-              >
+              <span :class="`boat-badge boat-${getHonmeiBoats(race)[1]}`">{{ getHonmeiBoats(race)[1] }}</span>
             </div>
+            <!-- 3連単（本命） -->
             <div class="bet-item">
               <span class="bet-label">3連単（本命）</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[0]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[0]?.艇番 }}</span
-              >
-              <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[1]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[1]?.艇番 }}</span
-              >
-              <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[2]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[2]?.艇番 }}</span
-              >
+              <span v-for="(n, i) in getHonmeiBoats(race)" :key="i">
+                <span v-if="i > 0" class="bet-arrow">→</span>
+                <span :class="`boat-badge boat-${n}`">{{ n }}</span>
+              </span>
             </div>
-            <div class="bet-item">
-              <span class="bet-label">3連単（対抗）</span>
-              <span
-                :class="`boat-badge boat-${taikouSortedFor(race.boats)[0]?.艇番}`"
-                >{{ taikouSortedFor(race.boats)[0]?.艇番 }}</span
-              >
-              <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${taikouSortedFor(race.boats)[1]?.艇番}`"
-                >{{ taikouSortedFor(race.boats)[1]?.艇番 }}</span
-              >
-              <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${taikouSortedFor(race.boats)[2]?.艇番}`"
-                >{{ taikouSortedFor(race.boats)[2]?.艇番 }}</span
-              >
-            </div>
-            <div class="bet-item">
-              <span class="bet-label">3連単（穴）</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[3]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[3]?.艇番 }}</span
-              >
-              <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[0]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[0]?.艇番 }}</span
-              >
-              <span class="bet-arrow">→</span>
-              <span
-                :class="`boat-badge boat-${sortedByPrediction(race.boats)[1]?.艇番}`"
-                >{{ sortedByPrediction(race.boats)[1]?.艇番 }}</span
-              >
-            </div>
+            <!-- 3連単（対抗）：本命と同じなら非表示 -->
             <div
-              v-if="upsetPickFor(race.boats).length === 3 && !isSameAsAnaFor(race)"
+              v-if="betKey(getTaikouBoats(race)) !== betKey(getHonmeiBoats(race))"
+              class="bet-item"
+            >
+              <span class="bet-label">3連単（対抗）</span>
+              <span v-for="(n, i) in getTaikouBoats(race)" :key="i">
+                <span v-if="i > 0" class="bet-arrow">→</span>
+                <span :class="`boat-badge boat-${n}`">{{ n }}</span>
+              </span>
+            </div>
+            <!-- 3連単（穴）：本命・対抗と同じなら非表示 -->
+            <div
+              v-if="getAnaBoats(race) &&
+                betKey(getAnaBoats(race)) !== betKey(getHonmeiBoats(race)) &&
+                betKey(getAnaBoats(race)) !== betKey(getTaikouBoats(race))"
+              class="bet-item"
+            >
+              <span class="bet-label">3連単（穴）</span>
+              <span v-for="(n, i) in getAnaBoats(race)!" :key="i">
+                <span v-if="i > 0" class="bet-arrow">→</span>
+                <span :class="`boat-badge boat-${n}`">{{ n }}</span>
+              </span>
+            </div>
+            <!-- 3連単（大穴）：本命・対抗・穴と同じなら非表示 -->
+            <div
+              v-if="getOozanaBoats(race) &&
+                betKey(getOozanaBoats(race)) !== betKey(getHonmeiBoats(race)) &&
+                betKey(getOozanaBoats(race)) !== betKey(getTaikouBoats(race)) &&
+                betKey(getOozanaBoats(race)) !== betKey(getAnaBoats(race))"
               class="bet-item bet-item-oozana-h"
               :class="isOozanaHit(race) ? 'bet-item-oozana-hit' : ''"
             >
               <span class="bet-label bet-label-oozana-h">💥 3連単（大穴）</span>
-              <span
-                v-for="(boat, i) in upsetPickFor(race.boats)"
-                :key="i"
-              >
+              <span v-for="(n, i) in getOozanaBoats(race)!" :key="i">
                 <span v-if="i > 0" class="bet-arrow">→</span>
-                <span :class="`boat-badge boat-${boat}`">{{ boat }}</span>
+                <span :class="`boat-badge boat-${n}`">{{ n }}</span>
               </span>
               <span v-if="isOozanaHit(race)" class="oozana-hit-mark">✅ 大穴的中！</span>
             </div>
@@ -548,6 +537,8 @@ const typeOptions: { label: string; value: CategoryType }[] = [
 const filteredRaces = computed(() => {
   if (!data.value?.races) return [];
   let races = data.value.races;
+  // 終了していないレース（着順データなし）は非表示
+  races = races.filter((r: any) => r.boats?.some((b: any) => b.実際の着順 != null));
   if (venueFilter.value != null) {
     races = races.filter((r: any) => r.会場番号 === venueFilter.value);
   }
@@ -737,16 +728,22 @@ const matchesCategoryType = (race: any, type: CategoryType) => {
 const sortedByPrediction = (boats: any[]) =>
   [...boats].sort((a, b) => a.予想順位 - b.予想順位);
 
-// 対抗用ランキング：1コース-5点、今節点×1.5追加（調子重視）
-const taikouSortedFor = (boats: any[]) =>
-  [...boats]
-    .map((b) => ({
+// 対抗用ランキング：コース差なだらか、今節調子・級別・展示を重視
+const TAIKOU_COURSE_SCORE: Record<number, number> = { 1: 4, 2: 3.5, 3: 3, 4: 2.5, 5: 2, 6: 2 }
+const TAIKOU_GRADE_SCORE: Record<string, number> = { A1: 8, A2: 5, B1: 2, B2: 0 }
+const taikouSortedFor = (boats: any[]) => {
+  const active = boats.filter((b: any) => b.展示タイム != null && b.展示タイム > 0)
+  const fastestTime = active.length > 0 ? Math.min(...active.map((b: any) => b.展示タイム)) : null
+  return [...boats]
+    .map((b: any) => ({
       ...b,
-      taikouScore: b.score
-        - (b.コース番号 === 1 ? 5 : 0)
-        + (b.scoreDetail?.今節点 ?? 0) * 1.5,
+      taikouScore: (TAIKOU_COURSE_SCORE[b.コース番号 ?? 6] ?? 2)
+        + (b.scoreDetail?.今節点 ?? 0) * 3
+        + (TAIKOU_GRADE_SCORE[b.級別] ?? 0)
+        + (fastestTime != null && b.展示タイム > 0 ? (fastestTime - b.展示タイム) * 15 : 0),
     }))
-    .sort((a, b) => b.taikouScore - a.taikouScore);
+    .sort((a: any, b: any) => b.taikouScore - a.taikouScore)
+};
 
 // 大穴買い目（外コース4〜6の中でスコア上位の艇→残り上位2艇）
 // 重複しないよう外コース軸を除いた上位2艇を選ぶ
@@ -776,14 +773,40 @@ const isSameAsAnaFor = (race: any): boolean => {
   );
 };
 
+// ===== スナップショット優先の買い目ヘルパー =====
+// スナップショットがあれば保存済み買い目を使い、なければ再計算する
+const getHonmeiBoats = (race: any): number[] => {
+  if (race.snapshotBets?.本命) return race.snapshotBets.本命.split('→').map(Number);
+  const sb = sortedByPrediction(race.boats);
+  return [sb[0]?.艇番, sb[1]?.艇番, sb[2]?.艇番].filter(Boolean);
+};
+const getTaikouBoats = (race: any): number[] => {
+  if (race.snapshotBets?.対抗) return race.snapshotBets.対抗.split('→').map(Number);
+  const tb = taikouSortedFor(race.boats)
+  const honmei = getHonmeiBoats(race)
+  const top3 = tb.slice(0, 3).map((b: any) => b.艇番)
+  if (honmei.join('→') === top3.join('→') && tb.length >= 4) {
+    return [tb[0].艇番, tb[1].艇番, tb[3].艇番]
+  }
+  return top3
+};
+const getAnaBoats = (race: any): number[] | null => {
+  if (race.snapshotBets?.穴) return race.snapshotBets.穴.split('→').map(Number);
+  const sb = sortedByPrediction(race.boats);
+  return sb[3] ? [sb[3].艇番, sb[0].艇番, sb[1].艇番] : null;
+};
+const getOozanaBoats = (race: any): number[] | null => {
+  if (race.snapshotBets?.大穴) return race.snapshotBets.大穴.split('→').map(Number);
+  const pick = upsetPickFor(race.boats);
+  return pick.length === 3 && !isSameAsAnaFor(race) ? pick : null;
+};
+
 // 大穴的中判定（大穴買い目の順番が実際の着順1〜3と一致）
 const isOozanaHit = (race: any): boolean => {
-  const pick = upsetPickFor(race.boats);
-  if (pick.length !== 3) return false;
-  const actual = (race.actualBoats ?? [])
-    .slice(0, 3)
-    .map((b: any) => b.艇番);
-  return pick.length === actual.length && pick.every((n: number, i: number) => n === actual[i]);
+  const pick = getOozanaBoats(race);
+  if (!pick || pick.length !== 3) return false;
+  const actual = (race.actualBoats ?? []).slice(0, 3).map((b: any) => b.艇番);
+  return pick.every((n: number, i: number) => n === actual[i]);
 };
 
 // 行のクラス（的中したかどうか）
@@ -834,9 +857,8 @@ const judgeClass = (b: any) => {
 const isTaikouHit = (race: any) => {
   if (!race.actualBoats || race.actualBoats.length < 3) return false;
   const actual = race.actualBoats.slice(0, 3).map((b: any) => b.艇番);
-  const t = taikouSortedFor(race.boats);
-  if (t.length < 3) return false;
-  const taikou = [t[0].艇番, t[1].艇番, t[2].艇番];
+  const taikou = getTaikouBoats(race);
+  if (taikou.length < 3) return false;
   return actual.every((a: number, i: number) => a === taikou[i]);
 };
 
@@ -844,11 +866,47 @@ const isTaikouHit = (race: any) => {
 const isAnaHit = (race: any) => {
   if (!race.actualBoats || race.actualBoats.length < 3) return false;
   const actual = race.actualBoats.slice(0, 3).map((b: any) => b.艇番);
-  const sorted = sortedByPrediction(race.boats);
-  if (sorted.length < 4) return false;
-  const ana = [sorted[3].艇番, sorted[0].艇番, sorted[1].艇番];
+  const ana = getAnaBoats(race);
+  if (!ana || ana.length < 3) return false;
   return actual.every((a, i) => a === ana[i]);
 };
+
+// 買い目の重複チェック用（配列を "1→2→3" 形式に変換して比較）
+function betKey(arr: number[] | null | undefined): string {
+  return arr ? arr.join('→') : ''
+}
+
+// アンカーボタンのクラス（的中種別ごとに色分け）
+// 買い目表示と同様に重複を除外してから判定する
+function anchorClass(race: any): string {
+  const honmei = betKey(getHonmeiBoats(race))
+  const taikou = betKey(getTaikouBoats(race))
+  const ana    = betKey(getAnaBoats(race))
+  const oozana = betKey(getOozanaBoats(race))
+
+  // 大穴：他の買い目と重複していない場合のみ
+  if (isOozanaHit(race) && oozana !== honmei && oozana !== taikou && oozana !== ana)
+    return 'anchor-oozana'
+  // 穴：本命・対抗と重複していない場合のみ
+  if (isAnaHit(race) && ana !== honmei && ana !== taikou)
+    return 'anchor-ana'
+  // 対抗：本命と重複していない場合のみ
+  if (isTaikouHit(race) && taikou !== honmei)
+    return 'anchor-taikou'
+  if (race.trifectaHit)   return 'anchor-trifecta'
+  if (race.win1st)        return 'anchor-win1st'
+  return 'anchor-miss'
+}
+
+// スムーススクロール（sticky ヘッダー 52px 分オフセット）
+const HEADER_HEIGHT = 52 + 8 // nav height + 余白
+function scrollToRace(race: any) {
+  const id = `race-${race.会場番号}-${race.raceNo}`
+  const el = document.getElementById(id)
+  if (!el) return
+  const top = el.getBoundingClientRect().top + window.scrollY - HEADER_HEIGHT
+  window.scrollTo({ top, behavior: 'smooth' })
+}
 
 async function fetchVenues() {
   try {
@@ -1205,5 +1263,94 @@ onMounted(fetchVenues);
 .bet-arrow {
   color: var(--color-muted);
   font-size: 12px;
+}
+
+/* ===== レースアンカーナビ ===== */
+.race-anchor-nav {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(6px);
+  border-radius: 10px 0 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: none;
+  z-index: 100;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
+}
+.anchor-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.15s, color 0.15s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #f1f5f9;
+  }
+}
+/* 💥 大穴的中: 赤 */
+.anchor-oozana {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.2);
+  font-weight: 700;
+  &:hover { background: rgba(239, 68, 68, 0.35); }
+}
+/* 💎 穴的中: 紫 */
+.anchor-ana {
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.15);
+  &:hover { background: rgba(168, 85, 247, 0.28); }
+}
+/* ⚡ 対抗的中: 水色 */
+.anchor-taikou {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  &:hover { background: rgba(56, 189, 248, 0.25); }
+}
+/* 🔥 三連単的中: オレンジ */
+.anchor-trifecta {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.15);
+  &:hover { background: rgba(251, 146, 60, 0.28); }
+}
+/* 🎯 1着のみ的中: 黄緑 */
+.anchor-win1st {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  &:hover { background: rgba(74, 222, 128, 0.25); }
+}
+/* 外れ */
+.anchor-miss {
+  color: #64748b;
+}
+
+/* スライドイン トランジション */
+.nav-slide-enter-active,
+.nav-slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+}
+.nav-slide-enter-from,
+.nav-slide-leave-to {
+  transform: translateY(-50%) translateX(100%);
+  opacity: 0;
+}
+.nav-slide-enter-to,
+.nav-slide-leave-from {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
 }
 </style>

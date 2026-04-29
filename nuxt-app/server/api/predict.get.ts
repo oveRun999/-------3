@@ -116,6 +116,21 @@ export default defineEventHandler((event) => {
   const previewMap: Record<number, any> = {}
   for (const p of previews) previewMap[p.艇番] = p
 
+  // ===== 手動入力値をマージ（直前情報にない艇番の値を補完） =====
+  const manualRows = db.prepare(`
+    SELECT 艇番, 展示タイム, スタートST
+    FROM 直前情報手動入力
+    WHERE 日付 = ? AND 会場番号 = ? AND レース番号 = ?
+  `).all(date, stadiumNo, raceNo) as any[]
+
+  for (const m of manualRows) {
+    if (!previewMap[m.艇番]) previewMap[m.艇番] = {}
+    if (m.展示タイム != null && previewMap[m.艇番].展示タイム == null)
+      previewMap[m.艇番].展示タイム = m.展示タイム
+    if (m.スタートST != null && previewMap[m.艇番].スタートST == null)
+      previewMap[m.艇番].スタートST = m.スタートST
+  }
+
   // 展示タイムの最速を取得
   const validTimes = previews
     .filter(p => p.展示タイム != null && p.展示タイム > 0)

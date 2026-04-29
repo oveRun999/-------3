@@ -120,9 +120,15 @@ async function doRefresh() {
 
 function showToast(ok: boolean, msg: string) {
   toast.value = { ok, msg };
-  setTimeout(() => {
-    toast.value = null;
-  }, 6000);
+  if (ok) {
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  } else {
+    setTimeout(() => {
+      toast.value = null;
+    }, 6000);
+  }
 }
 </script>
 
